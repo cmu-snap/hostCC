@@ -1,7 +1,7 @@
 help()
 {
     echo "Usage: setup-envir [ -H | --home (home directory)]
-               [ -m | --mtu (MTU size in bytes; default=4000 for TCP, 4096 for RDMA) ] 
+               [ -m | --mtu (MTU size in bytes; default=4000 for TCP, 4096 for RDMA) ]
                [ -d | --ddio (=0/1, whether DDIO should be disabled/enabled; default=0) ]
                [ -i | --intf (interface name, eg. ens2f0) ]
                [ -a | --addr (ip address for the interface) ]
@@ -28,7 +28,7 @@ fi
 eval set -- "$OPTS"
 
 #default values
-home='/home/saksham'
+home='$HOME'
 mtu=4000
 ddio=0
 intf="ens2f1"
@@ -121,9 +121,9 @@ ifconfig $intf mtu $mtu
 
 #disable TCP buffer auto-tuning, and set the buffer size to the specified size
 echo "Setting up the socket buffer size to be ${buf}MB"
-echo 0 > /proc/sys/net/ipv4/tcp_moderate_rcvbuf 
+echo 0 > /proc/sys/net/ipv4/tcp_moderate_rcvbuf
 #Set TCP receive buffer size to be 1MB (other 1MB is for the application buffer)
-echo "$(($buf * 2000000)) $(($buf * 2000000)) $(($buf * 2000000))" > /proc/sys/net/ipv4/tcp_rmem 
+echo "$(($buf * 2000000)) $(($buf * 2000000)) $(($buf * 2000000))" > /proc/sys/net/ipv4/tcp_rmem
 #Set TCP send buffer size to be 1MB
 echo "$(($buf * 1000000)) $(($buf * 1000000)) $(($buf * 1000000))" > /proc/sys/net/ipv4/tcp_wmem
 

@@ -36,7 +36,7 @@ def run_command(command):
 def collect_pcie_bw():
     create_database()  # Create the database and table if they don't exist
 
-    bash_command = "/home/saksham/pcm/build/bin/pcm-iio 1 -csv=/home/saksham/hostCC/demo/logs/pcie.csv"
+    bash_command = "$HOME/pcm/build/bin/pcm-iio 1 -csv=$HOME/hostCC/demo/logs/pcie.csv"
     thread = threading.Thread(target=run_command, args=(bash_command,))
     thread.start()
     time.sleep(3)
@@ -48,18 +48,18 @@ def collect_pcie_bw():
         pcie_bw = (subprocess.check_output(command, shell=True).decode().strip())
         pcie_bw = float(pcie_bw) / 1.05
         print(timestamp,pcie_bw)
-        
+
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
-        
+
         # Check if the number of rows exceeds the limit
         cursor.execute('SELECT COUNT(*) FROM pcie_data')
         num_rows = cursor.fetchone()[0]
-        
+
         if num_rows >= MAX_ROWS:
             # Delete the oldest row
             cursor.execute('DELETE FROM pcie_data WHERE id = (SELECT MIN(id) FROM pcie_data)')
-        
+
         # Insert the new data
         cursor.execute('INSERT INTO pcie_data (timestamp, pcie_bw) VALUES (?, ?)', (timestamp, pcie_bw))
         conn.commit()

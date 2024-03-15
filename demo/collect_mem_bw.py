@@ -36,8 +36,8 @@ def run_command(command):
 
 def collect_mem_bw():
     create_database()  # Create the database and table if they don't exist
-    
-    bash_command = "sudo taskset -c 31 /home/saksham/pcm/build/bin/pcm-memory 1 -columns=5 > logs/membw.log"
+
+    bash_command = "sudo taskset -c 31 $HOME/pcm/build/bin/pcm-memory 1 -columns=5 > logs/membw.log"
     thread = threading.Thread(target=run_command, args=(bash_command,))
     thread.start()
     time.sleep(3)
@@ -50,18 +50,18 @@ def collect_mem_bw():
         mem_bw = float(subprocess.check_output(command, shell=True).decode().strip())
         mem_bw_util = mem_bw/MAX_MEM_BW * 100
         print(timestamp,mem_bw_util)
-        
+
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
-        
+
         # Check if the number of rows exceeds the limit
         cursor.execute('SELECT COUNT(*) FROM membw_data')
         num_rows = cursor.fetchone()[0]
-        
+
         if num_rows >= MAX_ROWS:
             # Delete the oldest row
             cursor.execute('DELETE FROM membw_data WHERE id = (SELECT MIN(id) FROM membw_data)')
-        
+
         # Insert the new data
         cursor.execute('INSERT INTO membw_data (timestamp, mem_bw) VALUES (?, ?)', (timestamp, mem_bw_util))
         conn.commit()

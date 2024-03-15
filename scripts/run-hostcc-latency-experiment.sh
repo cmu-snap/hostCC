@@ -55,7 +55,7 @@ target_pcie_thresh=84
 mlc_cores="none"
 mlc_dur=100
 num_runs=2
-home="/home/saksham"
+home="$HOME"
 hostcc_dir=$home/hostCC/src
 setup_dir=$home/hostCC/utils
 exp_dir=$home/hostCC/utils/tcp
@@ -191,7 +191,7 @@ function start_hostcc() {
         echo "sudo insmod hostcc-module.ko target_pid=$target_pid target_pcie_thresh=$target_pcie_thresh target_iio_thresh=$target_iio_thresh"
         sudo insmod hostcc-module.ko target_pid=$target_pid target_pcie_thresh=$target_pcie_thresh target_iio_thresh=$target_iio_thresh
     fi
-    sleep 10 #give time for hostcc module to load 
+    sleep 10 #give time for hostcc module to load
     cd -
 }
 

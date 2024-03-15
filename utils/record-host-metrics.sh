@@ -1,20 +1,20 @@
 help()
 {
     echo "Usage: record-host-metrics [ -H | --home (home directory)]
-               [ -o | --outdir (name of the output directory which will store the records; default=test) ] 
-               [ -d | --dur (duration in seconds to record each metric; default=30s) ] 
-               [ -c | --cpu_util (=0/1, disable/enable recording cpu utilization) ) ] 
-               [ -C | --cores (comma separated values of cpu cores to log utilization, eg., '0,4,8,12') ) ] 
-               [ -r | --retx (=0/1, disable/enable recording retransmission rate (should be done at TCP senders) ) ] 
-               [ -T | --tcplog (=0/1, disable/enable recording TCP log (should be done at TCP senders) ) ] 
-               [ -b | --bw (=0/1, disable/enable recording app-level bandwidth ) ] 
-               [ -f | --flame (=0/1, disable/enable recording flamegraph (for cores specified via -C/--cores option) ) ] 
-               [ -P | --pcie (=0/1, disable/enable recording PCIe bandwidth) ] 
-               [ -M | --membw (=0/1, disable/enable recording memory bandwidth) ] 
-               [ -I | --iio (=0/1, disable/enable recording IIO occupancy) ] 
-               [ -p | --pfc (=0/1, disable/enable recording PFC pause triggers) ] 
-               [ -i | --intf (interface name, over which to record PFC triggers) ] 
-               [ -t | --type (=0/1, experiment type -- 0 for TCP, 1 for RDMA) ] 
+               [ -o | --outdir (name of the output directory which will store the records; default=test) ]
+               [ -d | --dur (duration in seconds to record each metric; default=30s) ]
+               [ -c | --cpu_util (=0/1, disable/enable recording cpu utilization) ) ]
+               [ -C | --cores (comma separated values of cpu cores to log utilization, eg., '0,4,8,12') ) ]
+               [ -r | --retx (=0/1, disable/enable recording retransmission rate (should be done at TCP senders) ) ]
+               [ -T | --tcplog (=0/1, disable/enable recording TCP log (should be done at TCP senders) ) ]
+               [ -b | --bw (=0/1, disable/enable recording app-level bandwidth ) ]
+               [ -f | --flame (=0/1, disable/enable recording flamegraph (for cores specified via -C/--cores option) ) ]
+               [ -P | --pcie (=0/1, disable/enable recording PCIe bandwidth) ]
+               [ -M | --membw (=0/1, disable/enable recording memory bandwidth) ]
+               [ -I | --iio (=0/1, disable/enable recording IIO occupancy) ]
+               [ -p | --pfc (=0/1, disable/enable recording PFC pause triggers) ]
+               [ -i | --intf (interface name, over which to record PFC triggers) ]
+               [ -t | --type (=0/1, experiment type -- 0 for TCP, 1 for RDMA) ]
                [ -h | --help  ]"
     exit 2
 }
@@ -32,11 +32,11 @@ fi
 eval set -- "$OPTS"
 
 #default values
-home='/home/saksham'
+home='$HOME'
 outdir='test'
 dur=30
 type=1
-cpu_util=1  
+cpu_util=1
 cores=0
 retx=0
 tcplog=0
