@@ -300,7 +300,6 @@ if [ "$membw" = 1 ]
 then
     echo "Collecting Memory bandwidth..."
     dump_membw > $outdir/logs/membw.log &
-    sleep 30
     sleep $dur
     sudo pkill -9 -f "pcm"
     parse_membw
@@ -314,7 +313,7 @@ then
     compile_if_needed $utils_dir/collect_iio_occ.c $utils_dir/collect_iio_occ
     # Run on core 28
     taskset -c 28 $utils_dir/collect_iio_occ &
-    sleep 5
+    sleep $dur
     sudo pkill -2 -f $utils_dir/collect_iio_occ
     sleep 5
     mv iio.log $outdir/logs/iio.log
