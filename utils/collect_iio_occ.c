@@ -25,7 +25,7 @@
 #define STACK 2 //We're concerned with stack #2 on our machine
 #define IRP_OCC_VAL 0x0040040F
 #define CORE 28
-#define NUM_LPROCS 64
+#define NUM_LPROCS 32
 
 int msr_fd[NUM_LPROCS];		// msr device driver files will be read from various functions, so make descriptors global
 
@@ -165,7 +165,7 @@ static void update_occ(void){
         }
 		// smoothed_avg_occ = ((7*smoothed_avg_occ) + latest_avg_occ) >> 3;
 	}
-	// (float(occ[i] - occ[i-1]) / ((float(time_us[i+1] - time_us[i])) * 1e-6 * freq)); 
+	// (float(occ[i] - occ[i-1]) / ((float(time_us[i+1] - time_us[i])) * 1e-6 * freq));
 }
 
 void main_init() {
@@ -236,7 +236,7 @@ int main(){
     // int cpu = get_core_number();
     int cpu = CORE;
     main_init();
-    
+
     while(1){
         sample_counters(cpu);
         update_occ();
