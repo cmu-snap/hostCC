@@ -230,14 +230,14 @@ if [ "$type" = 0 ]
 then
     echo "Collecting TCP experiment metrics..."
 
+    utils_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     if [ "$cpu_util" = 1 ]
     then
-    echo "Collecting CPU utilization for cores $cores..."
-    sar -P $cores 1 1000 > $outdir/logs/cpu_util.log &
-    sleep $dur
-    sudo pkill -9 -f "sar"
-    utils_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-    python3 $utils_dir/cpu_util.py $outdir/logs/cpu_util.log > $outdir/reports/cpu_util.rpt
+      echo "Collecting CPU utilization for cores $cores..."
+      sar -P $cores 1 1000 > $outdir/logs/cpu_util.log &
+      sleep $dur
+      sudo pkill -9 -f "sar"
+      python3 $utils_dir/cpu_util.py $outdir/logs/cpu_util.log > $outdir/reports/cpu_util.rpt
     fi
 
     # if ["$bw" = 1 ]
@@ -248,25 +248,25 @@ then
 
     if [ "$retx" = 1 ]
     then
-    echo "Collecting retransmission rate..."
-    dump_netstat $dur > $outdir/logs/retx.log
-    cat $outdir/logs/retx.log | grep -E "segment|TCPLostRetransmit" > retx.out
-    python3 $utils_dir/print_retx_rate.py retx.out $dur > $outdir/reports/retx.rpt
+      echo "Collecting retransmission rate..."
+      dump_netstat $dur > $outdir/logs/retx.log
+      cat $outdir/logs/retx.log | grep -E "segment|TCPLostRetransmit" > retx.out
+      python3 $utils_dir/print_retx_rate.py retx.out $dur > $outdir/reports/retx.rpt
     fi
 
     if [ "$tcplog" = 1 ]
     then
-    echo "Collecting tcplog..."
-    cd /sys/kernel/debug/tracing
-    echo > trace
-    echo 1 > events/tcp/tcp_probe/enable
-    sleep 2
-    echo 0 > events/tcp/tcp_probe/enable
-    sleep 2
-    cp trace $cur_dir/$outdir/logs/tcp.trace.log
-    echo > trace
-    cd -
-    python3 $utils_dir/parse_tcplog.py $outdir
+      echo "Collecting tcplog..."
+      cd /sys/kernel/debug/tracing
+      echo > trace
+      echo 1 > events/tcp/tcp_probe/enable
+      sleep 2
+      echo 0 > events/tcp/tcp_probe/enable
+      sleep 2
+      cp trace $cur_dir/$outdir/logs/tcp.trace.log
+      echo > trace
+      cd -
+      python3 $utils_dir/parse_tcplog.py $outdir
     fi
 
 elif [ "$type" = 1 ]
@@ -274,8 +274,8 @@ then
     echo "Collecting RDMA experiment metrics..."
     if [ "$pfc" = 1 ]
     then
-    echo "Collecting PFC triggers at RDMA server..."
-    collect_pfc
+      echo "Collecting PFC triggers at RDMA server..."
+      collect_pfc
     fi
 
 else
