@@ -3,7 +3,7 @@
 
 #define NIC_INTERFACE "ens2f1"
 #define NIC_LOCAL_SOCKET 0
-#define NIC_IIO_STACK 2
+#define NIC_IIO_STACK 1
 #define MBA_LEVEL_1_CORE 29
 #define MBA_LEVEL_2_CORE 30
 #define MBA_LEVEL_3_CORE 31

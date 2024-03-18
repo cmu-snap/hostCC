@@ -28,7 +28,7 @@
 #define IRP_MSR_PMON_CTL_BASE 0x0A5BL
 #define IRP_MSR_PMON_CTR_BASE 0x0A59L
 #define IIO_PCIE_1_PORT_0_BW_IN 0x0B20 //We're concerned with PCIe 1 stack on our machine (Table 1-11 in Intel Skylake Manual)
-#define STACK 2 //We're concerned with stack #2 on our machine
+#define STACK 1 //We're concerned with stack #1 on our machine
 #define IRP_OCC_VAL 0x0040040F
 #define CORE 20
 #define NUM_LPROCS 64
@@ -172,7 +172,7 @@ static void update_occ(void){
         }
 		// smoothed_avg_occ = ((7*smoothed_avg_occ) + latest_avg_occ) >> 3;
 	}
-	// (float(occ[i] - occ[i-1]) / ((float(time_us[i+1] - time_us[i])) * 1e-6 * freq)); 
+	// (float(occ[i] - occ[i-1]) / ((float(time_us[i+1] - time_us[i])) * 1e-6 * freq));
 }
 
 void main_init() {
@@ -226,20 +226,20 @@ void dump_ptile(){
      if (!boost::algorithm::is_sorted(data)) {
         std::sort(data.begin(), data.end());
     }
-    
+
     float desired_percentile = 99.9;
-    
+
     // Calculate the index
     float index = (desired_percentile / 100.0) * (data.size() - 1);
     int floor_index = static_cast<int>(index);
     int ceil_index = floor_index + 1;
-    
+
     // Interpolate the value
     float floor_value = data[floor_index];
     float ceil_value = data[ceil_index];
     float fraction = index - floor_index;
     float percentile_value = (1 - fraction) * floor_value + fraction * ceil_value;
-    
+
     std::cout << percentile_value << std::endl;
 }
 
@@ -272,7 +272,7 @@ int main(){
     // int cpu = get_core_number();
     int cpu = CORE;
     main_init();
-    
+
     uint64_t last_checkpoint = rdtscp();
     uint64_t time_from_checkpoint_ns;
     while(1){

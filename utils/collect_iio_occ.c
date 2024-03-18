@@ -22,7 +22,7 @@
 #define IRP_MSR_PMON_CTL_BASE 0x0A5BL
 #define IRP_MSR_PMON_CTR_BASE 0x0A59L
 #define IIO_PCIE_1_PORT_0_BW_IN 0x0B20 //We're concerned with PCIe 1 stack on our machine (Table 1-11 in Intel Skylake Manual)
-#define STACK 2 //We're concerned with stack #2 on our machine
+#define STACK 1 //We're concerned with stack #1 on our machine
 #define IRP_OCC_VAL 0x0040040F
 #define CORE 28
 #define NUM_LPROCS 32
