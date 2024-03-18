@@ -132,6 +132,7 @@ do
   esac
 done
 
+utils_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 mkdir -pv $outdir/logs #Directory to store collected logs
 mkdir -pv $outdir/reports #Directory to store parsed metrics
@@ -230,7 +231,6 @@ if [ "$type" = 0 ]
 then
     echo "Collecting TCP experiment metrics..."
 
-    utils_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     if [ "$cpu_util" = 1 ]
     then
       echo "Collecting CPU utilization for cores $cores..."
@@ -309,10 +309,10 @@ if [ "$iio" = 1 ]
 then
     echo "Collecting IIO occupancy..."
     # gcc collect_iio_occ.c -o collect_iio_occ
-    compile_if_needed collect_iio_occ.c collect_iio_occ
-    taskset -c 28 ./collect_iio_occ &
+    compile_if_needed $utils_dir/collect_iio_occ.c $utils_dir/collect_iio_occ
+    taskset -c 28 $utils_dir/collect_iio_occ &
     sleep 5
-    sudo pkill -2 -f collect_iio_occ
+    sudo pkill -2 -f $utils_dir/collect_iio_occ
     sleep 5
     mv iio.log $outdir/logs/iio.log
     #TODO: make more generic and add a parser to create report for iio occupancy logging from userspace
