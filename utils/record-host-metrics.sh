@@ -151,6 +151,7 @@ function dump_netstat() {
 
 function dump_pciebw() {
     modprobe msr
+    # Run on core 31
     sudo taskset -c 31 $home/pcm/build/bin/pcm-iio 1 -csv=$outdir/logs/pcie.csv &
 }
 
@@ -164,6 +165,7 @@ function parse_pciebw() {
 
 function dump_membw() {
     modprobe msr
+    # Run on core 31
     sudo taskset -c 31 $home/pcm/build/bin/pcm-memory 1 -columns=5
 }
 
@@ -310,6 +312,7 @@ then
     echo "Collecting IIO occupancy..."
     # gcc collect_iio_occ.c -o collect_iio_occ
     compile_if_needed $utils_dir/collect_iio_occ.c $utils_dir/collect_iio_occ
+    # Run on core 28
     taskset -c 28 $utils_dir/collect_iio_occ &
     sleep 5
     sudo pkill -2 -f $utils_dir/collect_iio_occ
