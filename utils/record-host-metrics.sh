@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 help()
 {
     echo "Usage: record-host-metrics [ -H | --home (home directory)]
