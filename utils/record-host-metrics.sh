@@ -133,10 +133,8 @@ do
 done
 
 
-mkdir -p logs #Directory to store collected logs
-mkdir -p logs/$outdir #Directory to store collected logs
-mkdir -p reports #Directory to store parsed metrics
-mkdir -p reports/$outdir #Directory to store parsed metrics
+mkdir -pv $outdir/logs #Directory to store collected logs
+mkdir -pv $outdir/reports #Directory to store parsed metrics
 
 function dump_netstat() {
     local SLEEP_TIME=$1
@@ -152,15 +150,15 @@ function dump_netstat() {
 
 function dump_pciebw() {
     modprobe msr
-    sudo taskset -c 31 $home/pcm/build/bin/pcm-iio 1 -csv=logs/$outdir/pcie.csv &
+    sudo taskset -c 31 $home/pcm/build/bin/pcm-iio 1 -csv=$outdir/logs/pcie.csv &
 }
 
 function parse_pciebw() {
     #TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
-    echo "PCIe_wr_tput: " $(cat logs/$outdir/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > reports/$outdir/pcie.rpt
-    echo "PCIe_rd_tput: " $(cat logs/$outdir/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> reports/$outdir/pcie.rpt
-    echo "IOTLB_hits: " $(cat logs/$outdir/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> reports/$outdir/pcie.rpt
-    echo "IOTLB_misses: " $(cat logs/$outdir/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> reports/$outdir/pcie.rpt
+    echo "PCIe_wr_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
+    echo "PCIe_rd_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
+    echo "IOTLB_hits: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    echo "IOTLB_misses: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
 }
 
 function dump_membw() {
@@ -170,41 +168,41 @@ function dump_membw() {
 
 function parse_membw() {
     #TODO: make more general, parse memory bandwidth for any given number of sockets
-    echo "Node0_rd_bw: " $(cat logs/$outdir/membw.log | grep "NODE 0 Mem Read" | awk '{ sum += $8; n++ } END { if (n > 0) printf "%f\n", sum / n; }') > reports/$outdir/membw.rpt
-    echo "Node0_wr_bw: " $(cat logs/$outdir/membw.log | grep "NODE 0 Mem Write" | awk '{ sum += $7; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> reports/$outdir/membw.rpt
-    echo "Node0_total_bw: " $(cat logs/$outdir/membw.log | grep "NODE 0 Memory" | awk '{ sum += $6; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> reports/$outdir/membw.rpt
-    echo "Node1_rd_bw: " $(cat logs/$outdir/membw.log | grep "NODE 1 Mem Read" | awk '{ sum += $16; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> reports/$outdir/membw.rpt
-    echo "Node1_wr_bw: " $(cat logs/$outdir/membw.log | grep "NODE 1 Mem Write" | awk '{ sum += $14; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> reports/$outdir/membw.rpt
-    echo "Node1_total_bw: " $(cat logs/$outdir/membw.log | grep "NODE 1 Memory" | awk '{ sum += $12; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> reports/$outdir/membw.rpt
-    echo "Node2_rd_bw: " $(cat logs/$outdir/membw.log | grep "NODE 2 Mem Read" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> reports/$outdir/membw.rpt
-    echo "Node2_wr_bw: " $(cat logs/$outdir/membw.log | grep "NODE 2 Mem Write" | awk '{ sum += $21; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> reports/$outdir/membw.rpt
-    echo "Node2_total_bw: " $(cat logs/$outdir/membw.log | grep "NODE 2 Memory" | awk '{ sum += $18; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> reports/$outdir/membw.rpt
-    echo "Node3_rd_bw: " $(cat logs/$outdir/membw.log | grep "NODE 3 Mem Read" | awk '{ sum += $32; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> reports/$outdir/membw.rpt
-    echo "Node3_wr_bw: " $(cat logs/$outdir/membw.log | grep "NODE 3 Mem Write" | awk '{ sum += $28; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> reports/$outdir/membw.rpt
-    echo "Node3_total_bw: " $(cat logs/$outdir/membw.log | grep "NODE 3 Memory" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> reports/$outdir/membw.rpt
+    echo "Node0_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Mem Read" | awk '{ sum += $8; n++ } END { if (n > 0) printf "%f\n", sum / n; }') > $outdir/reports/membw.rpt
+    echo "Node0_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Mem Write" | awk '{ sum += $7; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "Node0_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Memory" | awk '{ sum += $6; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "Node1_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Mem Read" | awk '{ sum += $16; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "Node1_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Mem Write" | awk '{ sum += $14; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "Node1_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Memory" | awk '{ sum += $12; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "Node2_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Read" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    echo "Node2_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Write" | awk '{ sum += $21; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    echo "Node2_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Memory" | awk '{ sum += $18; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    echo "Node3_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Read" | awk '{ sum += $32; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    echo "Node3_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Write" | awk '{ sum += $28; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    echo "Node3_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Memory" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
 }
 
 function collect_pfc() {
     #assuming PFC is enabled for QoS 0
-    sudo ethtool -S $intf | grep pause > logs/$outdir/pause.before.log
+    sudo ethtool -S $intf | grep pause > $outdir/logs/pause.before.log
     sleep $dur
-    sudo ethtool -S $intf | grep pause > logs/$outdir/pause.after.log
+    sudo ethtool -S $intf | grep pause > $outdir/logs/pause.after.log
 
-    pause_before=$(cat logs/$outdir/pause.before.log | grep "tx_prio0_pause" | head -n1 | awk '{ printf $2 }')
-    pause_duration_before=$(cat logs/$outdir/pause.before.log | grep "tx_prio0_pause_duration" | awk '{ printf $2 }')
-    pause_after=$(cat logs/$outdir/pause.after.log | grep "tx_prio0_pause" | head -n1 | awk '{ printf $2 }')
-    pause_duration_after=$(cat logs/$outdir/pause.after.log | grep "tx_prio0_pause_duration" | awk '{ printf $2 }')
+    pause_before=$(cat $outdir/logs/pause.before.log | grep "tx_prio0_pause" | head -n1 | awk '{ printf $2 }')
+    pause_duration_before=$(cat $outdir/logs/pause.before.log | grep "tx_prio0_pause_duration" | awk '{ printf $2 }')
+    pause_after=$(cat $outdir/logs/pause.after.log | grep "tx_prio0_pause" | head -n1 | awk '{ printf $2 }')
+    pause_duration_after=$(cat $outdir/logs/pause.after.log | grep "tx_prio0_pause_duration" | awk '{ printf $2 }')
 
-    echo "pauses_before: "$pause_before > logs/$outdir/pause.log
-    echo "pause_duration_before: "$pause_duration_before >> logs/$outdir/pause.log
-    echo "pauses_after: "$pause_after >> logs/$outdir/pause.log
-    echo "pause_duration_after: "$pause_duration_after >> logs/$outdir/pause.log
+    echo "pauses_before: "$pause_before > $outdir/logs/pause.log
+    echo "pause_duration_before: "$pause_duration_before >> $outdir/logs/pause.log
+    echo "pauses_after: "$pause_after >> $outdir/logs/pause.log
+    echo "pause_duration_after: "$pause_duration_after >> $outdir/logs/pause.log
 
     # echo $pause_before, $pause_after
-    echo "print(($pause_after - $pause_before)/$dur)" | lua > reports/$outdir/pause.rpt
+    echo "print(($pause_after - $pause_before)/$dur)" | lua > $outdir/reports/pause.rpt
 
     # echo $pause_duration_before, $pause_duration_after
-    echo "print(($pause_duration_after - $pause_duration_before)/$dur)" | lua >> reports/$outdir/pause.rpt
+    echo "print(($pause_duration_after - $pause_duration_before)/$dur)" | lua >> $outdir/reports/pause.rpt
 }
 
 
@@ -235,24 +233,24 @@ then
     if [ "$cpu_util" = 1 ]
     then
     echo "Collecting CPU utilization for cores $cores..."
-    sar -P $cores 1 1000 > logs/$outdir/cpu_util.log &
+    sar -P $cores 1 1000 > $outdir/logs/cpu_util.log &
     sleep $dur
     sudo pkill -9 -f "sar"
-    python3 cpu_util.py logs/$outdir/cpu_util.log > reports/$outdir/cpu_util.rpt
+    python3 cpu_util.py $outdir/logs/cpu_util.log > $outdir/reports/cpu_util.rpt
     fi
 
     # if ["$bw" = 1 ]
     # then
     # echo "Collecting app bandwidth..."
-    # echo "Avg_iperf_tput: " $(cat logs/$outdir/iperf.bw.log | grep "60.*-90.*" | awk  '{ sum += $7; n++ } END { if (n > 0) printf "%.3f", sum/1000; }') > reports/$outdir/iperf.bw.rpt
+    # echo "Avg_iperf_tput: " $(cat $outdir/logs/iperf.bw.log | grep "60.*-90.*" | awk  '{ sum += $7; n++ } END { if (n > 0) printf "%.3f", sum/1000; }') > $outdir/reports/iperf.bw.rpt
     # fi
 
     if [ "$retx" = 1 ]
     then
     echo "Collecting retransmission rate..."
-    dump_netstat $dur > logs/$outdir/retx.log
-    cat logs/$outdir/retx.log | grep -E "segment|TCPLostRetransmit" > retx.out
-    python3 print_retx_rate.py retx.out $dur > reports/$outdir/retx.rpt
+    dump_netstat $dur > $outdir/logs/retx.log
+    cat $outdir/logs/retx.log | grep -E "segment|TCPLostRetransmit" > retx.out
+    python3 print_retx_rate.py retx.out $dur > $outdir/reports/retx.rpt
     fi
 
     if [ "$tcplog" = 1 ]
@@ -264,7 +262,7 @@ then
     sleep 2
     echo 0 > events/tcp/tcp_probe/enable
     sleep 2
-    cp trace $cur_dir/logs/$outdir/tcp.trace.log
+    cp trace $cur_dir/$outdir/logs/tcp.trace.log
     echo > trace
     cd -
     python3 parse_tcplog.py $outdir
@@ -298,7 +296,7 @@ fi
 if [ "$membw" = 1 ]
 then
     echo "Collecting Memory bandwidth..."
-    dump_membw > logs/$outdir/membw.log &
+    dump_membw > $outdir/logs/membw.log &
     sleep 30
     sleep $dur
     sudo pkill -9 -f "pcm"
@@ -315,6 +313,6 @@ then
     sleep 5
     sudo pkill -2 -f collect_iio_occ
     sleep 5
-    mv iio.log logs/$outdir/iio.log
+    mv iio.log $outdir/logs/iio.log
     #TODO: make more generic and add a parser to create report for iio occupancy logging from userspace
 fi
