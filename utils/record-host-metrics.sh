@@ -49,8 +49,8 @@ membw=1
 iio=0
 pfc=0
 intf=ens2f0
+stack=1
 
-cur_dir=$PWD
 
 #TODO: add input config file to specify NUMA node and PCIe slot for PCIe, MemBW and IIO occupancy logging
 
@@ -157,10 +157,11 @@ function dump_pciebw() {
 
 function parse_pciebw() {
     #TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
-    echo "PCIe_wr_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
-    echo "PCIe_rd_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
-    echo "IOTLB_hits: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
-    echo "IOTLB_misses: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack 2 - PCIe1,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    local STACK=$1
+    echo "PCIe_wr_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
+    echo "PCIe_rd_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
+    echo "IOTLB_hits: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    echo "IOTLB_misses: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
 }
 
 function dump_membw() {
@@ -265,7 +266,7 @@ then
       sleep 2
       echo 0 > events/tcp/tcp_probe/enable
       sleep 2
-      cp trace $cur_dir/$outdir/logs/tcp.trace.log
+      cp trace $outdir/logs/tcp.trace.log
       echo > trace
       cd -
       python3 $utils_dir/parse_tcplog.py $outdir
@@ -289,10 +290,12 @@ fi
 if [ "$pcie" = 1 ]
 then
     echo "Collecting PCIe bandwidth..."
+    pushd $home/hostCC/utils
     dump_pciebw
     sleep $dur
     sudo pkill -9 -f "pcm"
-    parse_pciebw
+    parse_pciebw $stack
+    popd
 fi
 
 
