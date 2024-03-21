@@ -136,6 +136,9 @@ utils_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 mkdir -pv $outdir/logs #Directory to store collected logs
 mkdir -pv $outdir/reports #Directory to store parsed metrics
+# Make these directories accessible to all so that other scripts can store things here.
+chmod -R 777 $outdir/logs
+chmod -R 777 $outdir/reports
 
 function dump_netstat() {
     local SLEEP_TIME=$1
