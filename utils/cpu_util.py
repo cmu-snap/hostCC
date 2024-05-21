@@ -28,4 +28,4 @@ for cpu in cpu_util:
 
 print("cpu_utils: ",cpu_util)
 print("num_samples: ",num_samples)
-print("avg_cpu_util: ",total_util/num_cpus)
+print("avg_cpu_util: ", "" if num_cpus == 0 else total_util/num_cpus)
