@@ -311,7 +311,7 @@ then
     pushd $home/hostCC/utils
     dump_pciebw
     sleep $dur
-    sudo pkill -9 -f "pcm"
+    sudo pkill -9 -f "bin/pcm"
     parse_pciebw $stack
     popd
 fi
@@ -322,7 +322,7 @@ then
     echo "Collecting Memory bandwidth..."
     dump_membw > $outdir/logs/membw.log &
     sleep $dur
-    sudo pkill -9 -f "pcm"
+    sudo pkill -9 -f "bin/pcm"
     parse_membw
 fi
 
@@ -344,7 +344,7 @@ fi
 if [ "$regpcm" = 1 ]
 then
     echo "Collecting standard PCM metrics..."
-    dump_standard_pcm
+    dump_standard_pcm &
     sleep $dur
-    sudo pkill -9 -f "pcm"
+    sudo pkill -9 -f "bin/pcm"
 fi
