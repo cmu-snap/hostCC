@@ -24,8 +24,8 @@ help()
     exit 2
 }
 
-SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,M:,I:,p:,i:,t:,h
-LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,membw:,iio:,pfc:,intf:,type:,help
+SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,M:,I:,R:,p:,i:,t:,h
+LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
 OPTS=$(getopt -a -n record-host-metrics --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
