@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eoux pipefail
+
 help()
 {
     echo "Usage: record-host-metrics [ -H | --home (home directory)]
@@ -14,6 +16,7 @@ help()
                [ -P | --pcie (=0/1, disable/enable recording PCIe bandwidth) ]
                [ -M | --membw (=0/1, disable/enable recording memory bandwidth) ]
                [ -I | --iio (=0/1, disable/enable recording IIO occupancy) ]
+               [ -R | --regpcm (=0/1, disable/enable metrics from regular 'pcm' command) ]
                [ -p | --pfc (=0/1, disable/enable recording PFC pause triggers) ]
                [ -i | --intf (interface name, over which to record PFC triggers) ]
                [ -t | --type (=0/1, experiment type -- 0 for TCP, 1 for RDMA) ]
@@ -47,10 +50,13 @@ bw=1
 pcie=1
 membw=1
 iio=0
+regpcm=1
 pfc=0
 intf=ens2f0
 stack=1
 
+# Run pcm commands on the last core.
+runcore="$(($(nproc) - 1))"
 
 #TODO: add input config file to specify NUMA node and PCIe slot for PCIe, MemBW and IIO occupancy logging
 
@@ -106,6 +112,10 @@ do
       iio="$2"
       shift 2
       ;;
+    -R | --regpcm )
+      regpcm="$2"
+      shift 2
+      ;;
     -p | --pfc )
       pfc="$2"
       shift 2
@@ -154,8 +164,8 @@ function dump_netstat() {
 
 function dump_pciebw() {
     modprobe msr
-    # Run on core 31
-    sudo taskset -c 31 $home/pcm/build/bin/pcm-iio 1 -csv=$outdir/logs/pcie.csv &
+    # Run on core $runcore
+    sudo taskset -c $runcore $home/pcm/build/bin/pcm-iio 1 -csv=$outdir/logs/pcie.csv &
 }
 
 function parse_pciebw() {
@@ -169,8 +179,13 @@ function parse_pciebw() {
 
 function dump_membw() {
     modprobe msr
-    # Run on core 31
-    sudo taskset -c 31 $home/pcm/build/bin/pcm-memory 1 -columns=5
+    # Run on core $runcore
+    sudo taskset -c $runcore $home/pcm/build/bin/pcm-memory 1 -columns=5
+}
+
+function dump_standard_pcm() {
+    # Run on core $runcore
+    sudo taskset -c $runcore $home/pcm/build/bin/pcm 1 -csv=$outdir/logs/pcm.csv
 }
 
 function parse_membw() {
@@ -324,4 +339,12 @@ then
     sleep 5
     mv iio.log $outdir/logs/iio.log
     #TODO: make more generic and add a parser to create report for iio occupancy logging from userspace
+fi
+
+if [ "$regpcm" = 1 ]
+then
+    echo "Collecting standard PCM metrics..."
+    dump_standard_pcm
+    sleep $dur
+    sudo pkill -9 -f "pcm"
 fi
