@@ -15,6 +15,7 @@ help()
                [ -f | --flame (=0/1, disable/enable recording flamegraph (for cores specified via -C/--cores option) ) ]
                [ -P | --pcie (=0/1, disable/enable recording PCIe bandwidth) ]
                [ -s | --stack (=N, IIO stack that the NIC is attached to) ]
+               [ -n | --pcien (=N, PCIeN from pcm-iio) ]
                [ -M | --membw (=0/1, disable/enable recording memory bandwidth) ]
                [ -I | --iio (=0/1, disable/enable recording IIO occupancy) ]
                [ -R | --regpcm (=0/1, disable/enable metrics from regular 'pcm' command) ]
@@ -25,8 +26,8 @@ help()
     exit 2
 }
 
-SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,s:,M:,I:,R:,p:,i:,t:,h
-LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,stack:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
+SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,s:,n:,M:,I:,R:,p:,i:,t:,h
+LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,stack:,pcien:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
 OPTS=$(getopt -a -n record-host-metrics --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -49,12 +50,13 @@ tcplog=0
 flame=0
 bw=1
 pcie=1
+stack=1
+pcien=1
 membw=1
 iio=0
 regpcm=1
 pfc=0
 intf=ens2f0
-stack=1
 
 # Run pcm commands on the last core.
 runcore="$(($(nproc) - 1))"
@@ -107,6 +109,10 @@ do
       ;;
     -s | --stack )
       stack="$2"
+      shift 2
+      ;;
+    -n | --pcien )
+      pcien="$2"
       shift 2
       ;;
     -M | --membw )
@@ -176,10 +182,11 @@ function dump_pciebw() {
 function parse_pciebw() {
     #TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
     local STACK=$1
-    echo "PCIe_wr_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
-    echo "PCIe_rd_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
-    echo "IOTLB_hits: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
-    echo "IOTLB_misses: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe1,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    local PCIEN=$2
+    echo "PCIe_wr_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
+    echo "PCIe_rd_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
+    echo "IOTLB_hits: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    echo "IOTLB_misses: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
 }
 
 function dump_membw() {
@@ -317,7 +324,7 @@ then
     dump_pciebw
     sleep $dur
     sudo pkill -9 -f "bin/pcm"
-    parse_pciebw $stack
+    parse_pciebw $stack $pcien
     popd
 fi
 
