@@ -14,6 +14,7 @@ help()
                [ -b | --bw (=0/1, disable/enable recording app-level bandwidth ) ]
                [ -f | --flame (=0/1, disable/enable recording flamegraph (for cores specified via -C/--cores option) ) ]
                [ -P | --pcie (=0/1, disable/enable recording PCIe bandwidth) ]
+               [ -s | --stack (=N, IIO stack that the NIC is attached to) ]
                [ -M | --membw (=0/1, disable/enable recording memory bandwidth) ]
                [ -I | --iio (=0/1, disable/enable recording IIO occupancy) ]
                [ -R | --regpcm (=0/1, disable/enable metrics from regular 'pcm' command) ]
@@ -24,8 +25,8 @@ help()
     exit 2
 }
 
-SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,M:,I:,R:,p:,i:,t:,h
-LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
+SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,s:,M:,I:,R:,p:,i:,t:,h
+LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,stack:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
 OPTS=$(getopt -a -n record-host-metrics --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -102,6 +103,10 @@ do
       ;;
     -P | --pcie )
       pcie="$2"
+      shift 2
+      ;;
+    -s | --stack )
+      stack="$2"
       shift 2
       ;;
     -M | --membw )
