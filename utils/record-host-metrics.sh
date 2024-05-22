@@ -204,19 +204,19 @@ function dump_standard_pcm() {
 function parse_membw() {
     #TODO: make more general, parse memory bandwidth for any given number of sockets
     # In MB/s
-    echo "Node0_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Mem Read" | awk '{ sum += $8; n++ } END { if (n > 0) printf "%f\n", sum / n; }') > $outdir/reports/membw.rpt
-    echo "Node0_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Mem Write" | awk '{ sum += $7; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
-    echo "Node0_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Memory" | awk '{ sum += $6; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
-    echo "Node1_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Mem Read" | awk '{ sum += $16; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
-    echo "Node1_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Mem Write" | awk '{ sum += $14; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
-    echo "Node1_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Memory" | awk '{ sum += $12; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "avg_Node0_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Mem Read" | awk '{ sum += $8; n++ } END { if (n > 0) printf "%f\n", sum / n; }') > $outdir/reports/membw.rpt
+    echo "avg_Node0_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Mem Write" | awk '{ sum += $7; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "avg_Node0_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 0 Memory" | awk '{ sum += $6; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "avg_Node1_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Mem Read" | awk '{ sum += $16; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "avg_Node1_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Mem Write" | awk '{ sum += $14; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
+    echo "avg_Node1_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 1 Memory" | awk '{ sum += $12; n++ } END { if (n > 0) printf "%f\n", sum / n; }') >> $outdir/reports/membw.rpt
     # Disabled because our servers only have 2 sockets
-    #echo "Node2_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Read" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-    #echo "Node2_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Write" | awk '{ sum += $21; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-    #echo "Node2_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Memory" | awk '{ sum += $18; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-    #echo "Node3_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Read" | awk '{ sum += $32; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-    #echo "Node3_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Write" | awk '{ sum += $28; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-    #echo "Node3_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Memory" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    #echo "avg_Node2_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Read" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    #echo "avg_Node2_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Write" | awk '{ sum += $21; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    #echo "avg_Node2_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Memory" | awk '{ sum += $18; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    #echo "avg_Node3_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Read" | awk '{ sum += $32; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    #echo "avg_Node3_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Write" | awk '{ sum += $28; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+    #echo "avg_Node3_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Memory" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
 }
 
 function collect_pfc() {
