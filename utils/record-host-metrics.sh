@@ -255,7 +255,7 @@ then
     if [ "$cpu_util" = 1 ]
     then
       echo "Collecting CPU utilization for cores $cores..."
-      sar -P $cores 1 1000 | ts -s " " | grep ":" > $outdir/logs/cpu_util.log &
+      sar -P $cores 1 1000 | tr -s " " | grep ":" > $outdir/logs/cpu_util.log &
       sleep $dur
       sudo pkill -9 -f "sar"
       python3 $utils_dir/cpu_util.py $outdir/logs/cpu_util.log > $outdir/reports/cpu_util.rpt

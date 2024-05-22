@@ -26,6 +26,6 @@ for cpu in cpu_util:
         total_util += cpu_util[cpu]
         num_cpus += 1
 
-print("cpu_utils:", cpu_util)
-print("num_samples:", num_samples)
+print("cpu_utils:", dict(cpu_util))
+print("num_samples:", dict(num_samples))
 print("avg_cpu_util:", "" if num_cpus == 0 else total_util / num_cpus)
