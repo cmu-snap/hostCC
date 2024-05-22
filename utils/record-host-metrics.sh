@@ -183,10 +183,11 @@ function parse_pciebw() {
     #TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
     local STACK=$1
     local PCIEN=$2
-    echo "PCIe_wr_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
-    echo "PCIe_rd_tput: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
-    echo "IOTLB_hits: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
-    echo "IOTLB_misses: " $(cat $outdir/logs/pcie.csv | grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" | awk -F ',' '{ sum += $9; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    # tput is in Gbps
+    echo "avg_PCIe_wr_tput: " $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" $outdir/logs/pcie.csv | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }') > $outdir/reports/pcie.rpt
+    echo "avg_PCIe_rd_tput: " $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" $outdir/logs/pcie.csv | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }') >> $outdir/reports/pcie.rpt
+    echo "avg_IOTLB_hit_count: " $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" $outdir/logs/pcie.csv | awk -F ',' '{ sum += $7; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
+    echo "avg_IOTLB_miss_count: " $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" $outdir/logs/pcie.csv | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }') >> $outdir/reports/pcie.rpt
 }
 
 function dump_membw() {
