@@ -255,9 +255,9 @@ function compile_if_needed() {
   if [ ! -f "$executable" ] || [ "$source_file" -nt "$executable" ]; then
     echo "Compiling $source_file..."
     if gcc -o "$executable" "$source_file"; then
-      echo "Compilation failed."
-    else
       echo "Compilation successful."
+    else
+      echo "Compilation failed."
     fi
   else
     echo "No need to recompile."
