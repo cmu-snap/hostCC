@@ -245,7 +245,7 @@ int main(int argc, char const *argv[]) {
   msr_fd = (int *)malloc(sizeof(int) * num_lcores);
 
   for (int c = 0; c < num_lcores; ++c) {
-    sprintf(filename, "/dev/core/%d/msr", c);
+    sprintf(filename, "/dev/cpu/%d/msr", c);
     msr_fd[c] = open(filename, O_RDWR);
     // printf("   open command returns %d\n",msr_fd[i]);
     if (msr_fd[c] == -1) {
