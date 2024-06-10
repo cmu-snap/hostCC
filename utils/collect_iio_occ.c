@@ -24,13 +24,13 @@
 #define IIO_PCIE_1_PORT_0_BW_IN \
   0x0B20  // We're concerned with PCIe 1 stack on our machine (Table 1-11 in
           // Intel Skylake Manual)
-#define STACK 1  // We're concerned with stack #1 on our machine
 #define IRP_OCC_VAL 0x0040040F
-#define CORE 28
-#define NUM_LPROCS 32
+// #define STACK 1  // We're concerned with stack #1 on our machine
+// #define CORE 28
+// #define NUM_LCORES 32  // Number of (logical) cores
 
-int msr_fd[NUM_LPROCS];  // msr device driver files will be read from various
-                         // functions, so make descriptors global
+int *msr_fd;  // msr device driver files will be read from various
+              // functions, so make descriptors global
 
 FILE *log_file;
 
@@ -41,10 +41,10 @@ struct log_entry {
   uint64_t s_avg_occ;           // latest calculated smoothed occupancy
   uint64_t s_avg_occ_longterm;  // latest calculated smoothed occupancy long
                                 // term
-  int cpu;                      // current cpu
+  int core;                     // current core
 };
 
-struct log_entry LOG[LOG_SIZE];
+struct log_entry iio_log[LOG_SIZE];
 uint32_t log_index = 0;
 uint32_t counter = 0;
 uint64_t prev_rdtsc = 0;
@@ -55,7 +55,6 @@ uint64_t prev_cum_frc = 0;
 uint64_t cur_cum_frc = 0;
 uint64_t tsc_sample = 0;
 uint64_t msr_num;
-uint64_t msr_val;
 uint64_t rc64;
 uint64_t cum_occ_sample = 0;
 uint64_t cum_frc_sample = 0;
@@ -114,26 +113,26 @@ void wrmsr_userspace(int core, uint64_t wr_msr, uint64_t *wr_val_addr) {
   }
 }
 
-static void update_log(int c) {
-  LOG[log_index % LOG_SIZE].l_tsc = cur_rdtsc;
-  LOG[log_index % LOG_SIZE].td_ns = latest_time_delta_ns;
-  LOG[log_index % LOG_SIZE].avg_occ = latest_avg_occ;
-  LOG[log_index % LOG_SIZE].s_avg_occ = smoothed_avg_occ;
-  LOG[log_index % LOG_SIZE].s_avg_occ_longterm = smoothed_avg_occ_longterm;
-  LOG[log_index % LOG_SIZE].cpu = c;
-  log_index++;
+static void update_log(int core) {
+  iio_log[log_index % LOG_SIZE].l_tsc = cur_rdtsc;
+  iio_log[log_index % LOG_SIZE].td_ns = latest_time_delta_ns;
+  iio_log[log_index % LOG_SIZE].avg_occ = latest_avg_occ;
+  iio_log[log_index % LOG_SIZE].s_avg_occ = smoothed_avg_occ;
+  iio_log[log_index % LOG_SIZE].s_avg_occ_longterm = smoothed_avg_occ_longterm;
+  iio_log[log_index % LOG_SIZE].core = core;
+  ++log_index;
 }
 
-static void update_occ_ctl_reg(void) {
+static void update_occ_ctl_reg(int core, int stack) {
   // program the desired CTL register to read the corresponding CTR value
-  msr_num = IRP_MSR_PMON_CTL_BASE + (0x20 * STACK) + 0;
+  msr_num = IRP_MSR_PMON_CTL_BASE + (0x20 * stack) + 0;
   uint64_t wr_val = IRP_OCC_VAL;
-  wrmsr_userspace(CORE, msr_num, &wr_val);
+  wrmsr_userspace(core, msr_num, &wr_val);
 }
 
-static void sample_iio_occ_counter(int core) {
+static void sample_iio_occ_counter(int core, int stack) {
   uint64_t rd_val = 0;
-  msr_num = IRP_MSR_PMON_CTR_BASE + (0x20 * STACK) + 0;
+  msr_num = IRP_MSR_PMON_CTR_BASE + (0x20 * stack) + 0;
   rdmsr_userspace(core, msr_num, &rd_val);
   cum_occ_sample = rd_val;
   prev_cum_occ = cur_cum_occ;
@@ -146,9 +145,9 @@ static void sample_time_counter() {
   cur_rdtsc = tsc_sample;
 }
 
-static void sample_counters(int core) {
+static void sample_counters(int core, int stack) {
   // first sample occupancy
-  sample_iio_occ_counter(core);
+  sample_iio_occ_counter(core, stack);
   // sample time at the last
   sample_time_counter();
   return;
@@ -178,32 +177,32 @@ static void update_occ(void) {
   // freq));
 }
 
-void main_init() {
+void main_init(int num_lcores, int core, int stack) {
   // initialize the log
   int i = 0;
   while (i < LOG_SIZE) {
-    LOG[i].l_tsc = 0;
-    LOG[i].td_ns = 0;
-    LOG[i].avg_occ = 0;
-    LOG[i].s_avg_occ = 0;
-    LOG[i].s_avg_occ_longterm = 0;
-    LOG[i].cpu = 65;
-    i++;
+    iio_log[i].l_tsc = 0;
+    iio_log[i].td_ns = 0;
+    iio_log[i].avg_occ = 0;
+    iio_log[i].s_avg_occ = 0;
+    iio_log[i].s_avg_occ_longterm = 0;
+    iio_log[i].core = num_lcores;  // Dummy value to indicate uninitialized
+    ++i;
   }
-  update_occ_ctl_reg();
+  update_occ_ctl_reg(core, stack);
 }
 
 void main_exit() {
-  // dump log info
+  // dump iio_log info
   int i = 0;
   fprintf(
       log_file,
-      "index,latest_tsc,time_delta_ns,avg_occ,s_avg_occ,s_avg_occ_long,cpu\n");
+      "index,latest_tsc,time_delta_ns,avg_occ,s_avg_occ,s_avg_occ_long,core\n");
   while (i < LOG_SIZE) {
-    fprintf(log_file, "%d,%lu,%lu,%lu,%lu,%lu,%d\n", i, LOG[i].l_tsc,
-            LOG[i].td_ns, LOG[i].avg_occ, LOG[i].s_avg_occ,
-            LOG[i].s_avg_occ_longterm, LOG[i].cpu);
-    i++;
+    fprintf(log_file, "%d,%lu,%lu,%lu,%lu,%lu,%d\n", i, iio_log[i].l_tsc,
+            iio_log[i].td_ns, iio_log[i].avg_occ, iio_log[i].s_avg_occ,
+            iio_log[i].s_avg_occ_longterm, iio_log[i].core);
+    ++i;
   }
 }
 
@@ -213,14 +212,14 @@ static void catch_function(int signal) {
   exit(0);
 }
 
-int main() {
+int main(int argc, char const *argv[]) {
   if (signal(SIGINT, catch_function) == SIG_ERR) {
     fprintf(log_file, "An error occurred while setting the signal handler.\n");
     return EXIT_FAILURE;
   }
 
   char filename[100];
-  sprintf(filename, "iio.log");
+  sprintf(filename, "iio.csv");
   log_file = fopen(filename, "w+");
   if (log_file == 0) {
     fprintf(stderr, "ERROR %s when trying to open log file %s\n",
@@ -228,30 +227,45 @@ int main() {
     exit(-1);
   }
 
-  int nr_cpus = NUM_LPROCS;
-  int i;
-  for (i = 0; i < nr_cpus; i++) {
-    sprintf(filename, "/dev/cpu/%d/msr", i);
-    msr_fd[i] = open(filename, O_RDWR);
+  if (argc != 4) {
+    fprintf(
+        log_file,
+        "Usage: %s <num_lcores> <core to use for measurement> <IIO stack>\n",
+        argv[0]);
+    exit(-1);
+  }
+  int num_lcores = atoi(argv[1]);
+  // This is the core used to measure the IIO occupancy. Must be on the same
+  // NUMA node as the NIC.
+  int measure_core = atoi(argv[2]);
+  int stack = atoi(argv[3]);
+
+  msr_fd = (int *)malloc(sizeof(int) * num_lcores);
+
+  update_occ_ctl_reg(measure_core, stack);
+
+  for (int c = 0; c < num_lcores; ++c) {
+    sprintf(filename, "/dev/core/%d/msr", c);
+    msr_fd[c] = open(filename, O_RDWR);
     // printf("   open command returns %d\n",msr_fd[i]);
-    if (msr_fd[i] == -1) {
+    if (msr_fd[c] == -1) {
       fprintf(log_file, "ERROR %s when trying to open %s\n", strerror(errno),
               filename);
       exit(-1);
     }
   }
 
-  // int cpu = get_core_number();
-  int cpu = CORE;
-  main_init();
+  main_init(num_lcores, measure_core, stack);
 
   while (1) {
-    sample_counters(cpu);
+    sample_counters(measure_core, stack);
     update_occ();
-    update_log(cpu);
-    counter++;
+    update_log(measure_core);
+    ++counter;
   }
 
   main_exit();
+
+  free(msr_fd);
   return 0;
 }

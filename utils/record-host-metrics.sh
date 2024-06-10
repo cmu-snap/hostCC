@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ux
+set -eoux pipefail
 
 help() {
   echo "Usage: record-host-metrics [ -H | --home (home directory)]
@@ -56,6 +56,8 @@ iio=0
 regpcm=1
 pfc=0
 intf=ens2f0
+
+iio_measure_core=28
 
 # Run pcm commands on the last core.
 runcore="$(($(nproc) - 1))"
@@ -326,17 +328,16 @@ if [ "$membw" = 1 ]; then
 fi
 
 if [ "$iio" = 1 ]; then
-  echo "Skipping IIO occupancy because script only suports one core..."
-  # echo "Collecting IIO occupancy..."
-  # # gcc collect_iio_occ.c -o collect_iio_occ
-  # compile_if_needed $utils_dir/collect_iio_occ.c $utils_dir/collect_iio_occ
-  # # Run on core 28
-  # taskset -c 28 $utils_dir/collect_iio_occ &
-  # sleep $dur
-  # sudo pkill -2 -f $utils_dir/collect_iio_occ
-  # sleep 5
-  # mv iio.log $outdir/logs/iio.log
-  # #TODO: make more generic and add a parser to create report for iio occupancy logging from userspace
+  echo "Collecting IIO occupancy..."
+  # gcc collect_iio_occ.c -o collect_iio_occ
+  compile_if_needed "$utils_dir/collect_iio_occ.c" "$utils_dir/collect_iio_occ"
+  # Run on core 28
+  taskset -c "$iio_measure_core" "$utils_dir/collect_iio_occ" "$(nproc)" "$iio_measure_core" "$stack" &
+  sleep "$dur"
+  sudo pkill -2 -f "$utils_dir/collect_iio_occ"
+  sleep 5
+  mv iio.csv "$outdir/logs/iio.csv"
+  #TODO: make more generic and add a parser to create report for iio occupancy logging from userspace
 fi
 
 if [ "$regpcm" = 1 ]; then
