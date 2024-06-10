@@ -244,8 +244,6 @@ int main(int argc, char const *argv[]) {
 
   msr_fd = (int *)malloc(sizeof(int) * num_lcores);
 
-  update_occ_ctl_reg(measure_core, stack);
-
   for (int c = 0; c < num_lcores; ++c) {
     sprintf(filename, "/dev/core/%d/msr", c);
     msr_fd[c] = open(filename, O_RDWR);
@@ -258,6 +256,7 @@ int main(int argc, char const *argv[]) {
   }
 
   main_init(num_lcores, measure_core, stack);
+  update_occ_ctl_reg(measure_core, stack);
 
   while (1) {
     sample_counters(measure_core, stack);
