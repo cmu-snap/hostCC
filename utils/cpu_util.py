@@ -10,9 +10,9 @@ with open(INPUT_FILE) as f1:
     for line in f1:
         if "CPU" not in line:
             elements = line.split()
-            assert len(elements) == 8
-            cpu = int(elements[1])
-            idle = float(elements[7])
+            assert len(elements) == 9
+            cpu = int(elements[2])
+            idle = float(elements[8])
             cpu_util[cpu] += 100 - idle
             num_samples[cpu] += 1
 
