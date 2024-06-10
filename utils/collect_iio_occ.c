@@ -105,8 +105,6 @@ void rdmsr_userspace(int core, uint64_t rd_msr, uint64_t *rd_val_addr) {
 
 void wrmsr_userspace(int core, uint64_t wr_msr, uint64_t *wr_val_addr) {
   rc64 = pwrite(msr_fd[core], wr_val_addr, sizeof(wr_val_addr), wr_msr);
-  fprintf(log_file, "pwrite(msr_fd[%d]=%d, %p, %lu, %lu) = %ld\n", core,
-          msr_fd[core], wr_val_addr, sizeof(wr_val_addr), wr_msr, rc64);
   if (rc64 != 8) {
     fprintf(log_file,
             "ERROR writing to MSR device on core %d, write %ld bytes\n", core,
