@@ -19,11 +19,11 @@
 #define LOG_SIZE 100000
 #define WEIGHT_FACTOR 8
 #define WEIGHT_FACTOR_LONG_TERM 256
-#define IRP_MSR_PMON_CTL_BASE 0x0A5BL
-#define IRP_MSR_PMON_CTR_BASE 0x0A59L
+#define IRP_MSR_PMON_CTL_BASE 0x0A5BL // Table 1-10
+#define IRP_MSR_PMON_CTR_BASE 0x0A59L // Table 1-10
 #define IIO_PCIE_1_PORT_0_BW_IN \
   0x0B20  // We're concerned with PCIe 1 stack on our machine (Table 1-11 in
-          // Intel Skylake Manual)
+          // Intel Xeon Processor Scalable Memory Family Uncore Performance Monitoring)
 #define IRP_OCC_VAL 0x0040040F
 // #define STACK 1  // We're concerned with stack #1 on our machine
 // #define CORE 28
