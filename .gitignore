@@ -13,3 +13,4 @@ utils/reports/*
 *.csv
 *.db
 .DS_Store
+.trunk/*

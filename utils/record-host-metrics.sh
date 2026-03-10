@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-set -eoux pipefail
+set -oux pipefail
 
 help() {
-  echo "Usage: record-host-metrics [ -H | --home (home directory)]
+	echo "Usage: record-host-metrics [ -H | --home (home directory)]
                [ -o | --outdir (name of the output directory which will store the records; default=test) ]
                [ -d | --dur (duration in seconds to record each metric; default=30s) ]
                [ -c | --cpu_util (=0/1, disable/enable recording cpu utilization) ) ]
@@ -22,23 +22,23 @@ help() {
                [ -i | --intf (interface name, over which to record PFC triggers) ]
                [ -t | --type (=0/1, experiment type -- 0 for TCP, 1 for RDMA) ]
                [ -h | --help  ]"
-  exit 2
+	exit 2
 }
 
 SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,s:,n:,M:,I:,R:,p:,i:,t:,h
 LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,stack:,pcien:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
-OPTS=$(getopt -a -n record-host-metrics --options $SHORT --longoptions $LONG -- "$@")
+OPTS=$(getopt -a -n record-host-metrics --options "${SHORT}" --longoptions "${LONG}" -- "$@")
 
 VALID_ARGUMENTS="$#" # Returns the count of arguments that are in short or long options
 
-if [ "$VALID_ARGUMENTS" -eq 0 ]; then
-  help
+if [[ ${VALID_ARGUMENTS} -eq 0 ]]; then
+	help
 fi
 
-eval set -- "$OPTS"
+eval set -- "${OPTS}"
 
 #default values
-home="$HOME"
+home="${HOME}"
 outdir='test'
 dur=30
 type=1
@@ -57,299 +57,302 @@ regpcm=1
 pfc=0
 intf=ens2f0
 
-iio_measure_core=28
-
 # Run pcm commands on the last core.
 runcore="$(($(nproc) - 1))"
 
 #TODO: add input config file to specify NUMA node and PCIe slot for PCIe, MemBW and IIO occupancy logging
 
 while :; do
-  case "$1" in
-  -H | --home)
-    home="$2"
-    shift 2
-    ;;
-  -o | --outdir)
-    outdir="$2"
-    shift 2
-    ;;
-  -d | --dur)
-    dur="$2"
-    shift 2
-    ;;
-  -c | --cpu_util)
-    cpu_util="$2"
-    shift 2
-    ;;
-  -C | --cores)
-    cores="$2"
-    shift 2
-    ;;
-  -r | --retx)
-    retx="$2"
-    shift 2
-    ;;
-  -T | --tcplog)
-    tcplog="$2"
-    shift 2
-    ;;
-  -b | --bw)
-    bw="$2"
-    shift 2
-    ;;
-  -f | --flame)
-    flame="$2"
-    shift 2
-    ;;
-  -P | --pcie)
-    pcie="$2"
-    shift 2
-    ;;
-  -s | --stack)
-    stack="$2"
-    shift 2
-    ;;
-  -n | --pcien)
-    pcien="$2"
-    shift 2
-    ;;
-  -M | --membw)
-    membw="$2"
-    shift 2
-    ;;
-  -I | --iio)
-    iio="$2"
-    shift 2
-    ;;
-  -R | --regpcm)
-    regpcm="$2"
-    shift 2
-    ;;
-  -p | --pfc)
-    pfc="$2"
-    shift 2
-    ;;
-  -i | --intf)
-    intf="$2"
-    shift 2
-    ;;
-  -t | --type)
-    type="$2"
-    shift 2
-    ;;
-  -h | --help)
-    help
-    ;;
-  --)
-    shift
-    break
-    ;;
-  *)
-    echo "Unexpected option: $1"
-    help
-    ;;
-  esac
+	case "$1" in
+	-H | --home)
+		home="$2"
+		shift 2
+		;;
+	-o | --outdir)
+		outdir="$2"
+		shift 2
+		;;
+	-d | --dur)
+		dur="$2"
+		shift 2
+		;;
+	-c | --cpu_util)
+		cpu_util="$2"
+		shift 2
+		;;
+	-C | --cores)
+		cores="$2"
+		shift 2
+		;;
+	-r | --retx)
+		retx="$2"
+		shift 2
+		;;
+	-T | --tcplog)
+		tcplog="$2"
+		shift 2
+		;;
+	-b | --bw)
+		bw="$2"
+		shift 2
+		;;
+	-f | --flame)
+		flame="$2"
+		shift 2
+		;;
+	-P | --pcie)
+		pcie="$2"
+		shift 2
+		;;
+	-s | --stack)
+		stack="$2"
+		shift 2
+		;;
+	-n | --pcien)
+		pcien="$2"
+		shift 2
+		;;
+	-M | --membw)
+		membw="$2"
+		shift 2
+		;;
+	-I | --iio)
+		iio="$2"
+		shift 2
+		;;
+	-R | --regpcm)
+		regpcm="$2"
+		shift 2
+		;;
+	-p | --pfc)
+		pfc="$2"
+		shift 2
+		;;
+	-i | --intf)
+		intf="$2"
+		shift 2
+		;;
+	-t | --type)
+		type="$2"
+		shift 2
+		;;
+	-h | --help)
+		help
+		;;
+	--)
+		shift
+		break
+		;;
+	*)
+		echo "Unexpected option: $1"
+		help
+		;;
+	esac
 done
 
 utils_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
-mkdir -pv "$outdir/logs"    #Directory to store collected logs
-mkdir -pv "$outdir/reports" #Directory to store parsed metrics
+mkdir -pv "${outdir}/logs"    #Directory to store collected logs
+mkdir -pv "${outdir}/reports" #Directory to store parsed metrics
 # Make these directories accessible to all so that other scripts can store things here.
-chmod -R 777 "$outdir/logs"
-chmod -R 777 "$outdir/reports"
+chmod -R 777 "${outdir}/logs"
+chmod -R 777 "${outdir}/reports"
+
+# Load MSR module once (needed by PCM tools).
+modprobe msr 2>/dev/null || true
 
 function dump_netstat() {
-  local SLEEP_TIME=$1
+	local SLEEP_TIME=$1
 
-  echo "Before measurement"
-  netstat -s
-  echo "Sleeping..."
-  sleep "$SLEEP_TIME"
-  echo "After measurement"
-  netstat -s
+	echo "Before measurement"
+	netstat -s
+	echo "Sleeping..."
+	sleep "${SLEEP_TIME}"
+	echo "After measurement"
+	netstat -s
 
 }
 
 function dump_pciebw() {
-  modprobe msr
-  # Run on core $runcore
-  sudo taskset -c "$runcore" "$home/pcm/build/bin/pcm-iio" 1 -csv="$outdir/logs/pcie.csv" &
+	# Run on core $runcore
+	sudo taskset -c "${runcore}" "${home}/pcm/build/bin/pcm-iio" 1 -csv="${outdir}/logs/pcie.csv"
 }
 
 function parse_pciebw() {
-  #TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
-  local STACK=$1
-  local PCIEN=$2
-  # tput is in Gbps
-  {
-    echo "avg_PCIe_wr_tput: $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" "$outdir/logs/pcie.csv" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }')"
-    echo "avg_PCIe_rd_tput: $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" "$outdir/logs/pcie.csv" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }')"
-    echo "avg_IOTLB_hit_count: $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" "$outdir/logs/pcie.csv" | awk -F ',' '{ sum += $7; n++ } END { if (n > 0) printf "%0.3f", sum / n; }')"
-    echo "avg_IOTLB_miss_count: $(grep "Socket0,IIO Stack $STACK - PCIe$PCIEN,Part0" "$outdir/logs/pcie.csv" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }')"
-  } >>"$outdir/reports/pcie.rpt"
+	#TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
+	local STACK=$1
+	local PCIEN=$2
+	# tput is in Gbps
+	{
+		echo "avg_PCIe_wr_tput: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }')"
+		echo "avg_PCIe_rd_tput: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }')"
+		echo "avg_IOTLB_hit_count: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $7; n++ } END { if (n > 0) printf "%0.3f", sum / n; }')"
+		echo "avg_IOTLB_miss_count: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }')"
+	} >>"${outdir}/reports/pcie.rpt"
 }
 
 function dump_membw() {
-  modprobe msr
-  # Run on core $runcore
-  sudo taskset -c "$runcore" "$home/pcm/build/bin/pcm-memory" 1 -columns=5
+	# Run on core $runcore
+	sudo taskset -c "${runcore}" "${home}/pcm/build/bin/pcm-memory" 1 -columns=5
 }
 
 function dump_standard_pcm() {
-  # Run on core $runcore
-  sudo taskset -c $runcore "$home/pcm/build/bin/pcm" 1 -csv="$outdir/logs/pcm.csv"
+	# Run on core $runcore
+	sudo taskset -c "${runcore}" "${home}/pcm/build/bin/pcm" 1 -csv="${outdir}/logs/pcm.csv"
 }
 
 function parse_membw() {
-  #TODO: make more general, parse memory bandwidth for any given number of sockets
-  # In MB/s
-  {
-    echo "avg_Node0_rd_bw: $(grep "NODE 0 Mem Read" "$outdir/logs/membw.log" | awk '{ sum += $8; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
-    echo "avg_Node0_wr_bw: $(grep "NODE 0 Mem Write" "$outdir/logs/membw.log" | awk '{ sum += $7; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
-    echo "avg_Node0_total_bw: $(grep "NODE 0 Memory" "$outdir/logs/membw.log" | awk '{ sum += $6; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
-    echo "avg_Node1_rd_bw: $(grep "NODE 1 Mem Read" "$outdir/logs/membw.log" | awk '{ sum += $16; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
-    echo "avg_Node1_wr_bw: $(grep "NODE 1 Mem Write" "$outdir/logs/membw.log" | awk '{ sum += $14; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
-    echo "avg_Node1_total_bw: $(grep "NODE 1 Memory" "$outdir/logs/membw.log" | awk '{ sum += $12; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
-  } >>"$outdir/reports/membw.rpt"
-  # Disabled because our servers only have at most 2 sockets
-  #echo "avg_Node2_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Read" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-  #echo "avg_Node2_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Write" | awk '{ sum += $21; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-  #echo "avg_Node2_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Memory" | awk '{ sum += $18; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-  #echo "avg_Node3_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Read" | awk '{ sum += $32; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-  #echo "avg_Node3_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Write" | awk '{ sum += $28; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
-  #echo "avg_Node3_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Memory" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+	#TODO: make more general, parse memory bandwidth for any given number of sockets
+	# In MB/s
+	{
+		echo "avg_Node0_rd_bw: $(grep "NODE 0 Mem Read" "${outdir}/logs/membw.log" | awk '{ sum += $8; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
+		echo "avg_Node0_wr_bw: $(grep "NODE 0 Mem Write" "${outdir}/logs/membw.log" | awk '{ sum += $7; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
+		echo "avg_Node0_total_bw: $(grep "NODE 0 Memory" "${outdir}/logs/membw.log" | awk '{ sum += $6; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
+		echo "avg_Node1_rd_bw: $(grep "NODE 1 Mem Read" "${outdir}/logs/membw.log" | awk '{ sum += $16; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
+		echo "avg_Node1_wr_bw: $(grep "NODE 1 Mem Write" "${outdir}/logs/membw.log" | awk '{ sum += $14; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
+		echo "avg_Node1_total_bw: $(grep "NODE 1 Memory" "${outdir}/logs/membw.log" | awk '{ sum += $12; n++ } END { if (n > 0) printf "%f\n", sum / n; }')"
+	} >>"${outdir}/reports/membw.rpt"
+	# Disabled because our servers only have at most 2 sockets
+	#echo "avg_Node2_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Read" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+	#echo "avg_Node2_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Mem Write" | awk '{ sum += $21; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+	#echo "avg_Node2_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 2 Memory" | awk '{ sum += $18; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+	#echo "avg_Node3_rd_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Read" | awk '{ sum += $32; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+	#echo "avg_Node3_wr_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Mem Write" | awk '{ sum += $28; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
+	#echo "avg_Node3_total_bw: " $(cat $outdir/logs/membw.log | grep "NODE 3 Memory" | awk '{ sum += $24; n++ } END { if (n > 0) printf "%f\n", sum / n; }')  >> $outdir/reports/membw.rpt
 }
 
 function collect_pfc() {
-  #assuming PFC is enabled for QoS 0
-  sudo ethtool -S "$intf" | grep pause >"$outdir/logs/pause.before.log"
-  sleep "$dur"
-  sudo ethtool -S "$intf" | grep pause >"$outdir/logs/pause.after.log"
+	#assuming PFC is enabled for QoS 0
+	sudo ethtool -S "${intf}" | grep pause >"${outdir}/logs/pause.before.log"
+	sleep "${dur}"
+	sudo ethtool -S "${intf}" | grep pause >"${outdir}/logs/pause.after.log"
 
-  pause_before=$(grep "tx_prio0_pause" "$outdir/logs/pause.before.log" | head -n1 | awk '{ printf $2 }')
-  pause_duration_before=$(grep "tx_prio0_pause_duration" "$outdir/logs/pause.before.log" | awk '{ printf $2 }')
-  pause_after=$(grep "tx_prio0_pause" "$outdir/logs/pause.after.log" | head -n1 | awk '{ printf $2 }')
-  pause_duration_after=$(grep "tx_prio0_pause_duration" "$outdir/logs/pause.after.log" | awk '{ printf $2 }')
+	pause_before=$(grep "tx_prio0_pause" "${outdir}/logs/pause.before.log" | head -n1 | awk '{ printf $2 }')
+	pause_duration_before=$(grep "tx_prio0_pause_duration" "${outdir}/logs/pause.before.log" | awk '{ printf $2 }')
+	pause_after=$(grep "tx_prio0_pause" "${outdir}/logs/pause.after.log" | head -n1 | awk '{ printf $2 }')
+	pause_duration_after=$(grep "tx_prio0_pause_duration" "${outdir}/logs/pause.after.log" | awk '{ printf $2 }')
 
-  {
-    echo "pauses_before: $pause_before"
-    echo "pause_duration_before: $pause_duration_before"
-    echo "pauses_after: $pause_after"
-    echo "pause_duration_after: $pause_duration_after"
-  } >>"$outdir/logs/pause.log"
+	{
+		echo "pauses_before: ${pause_before}"
+		echo "pause_duration_before: ${pause_duration_before}"
+		echo "pauses_after: ${pause_after}"
+		echo "pause_duration_after: ${pause_duration_after}"
+	} >>"${outdir}/logs/pause.log"
 
-  # echo $pause_before, $pause_after
-  echo "print(($pause_after - $pause_before)/$dur)" | lua >"$outdir/reports/pause.rpt"
+	# echo $pause_before, $pause_after
+	echo "print((${pause_after} - ${pause_before})/${dur})" | lua >"${outdir}/reports/pause.rpt"
 
-  # echo $pause_duration_before, $pause_duration_after
-  echo "print(($pause_duration_after - $pause_duration_before)/$dur)" | lua >>"$outdir/reports/pause.rpt"
+	# echo $pause_duration_before, $pause_duration_after
+	echo "print((${pause_duration_after} - ${pause_duration_before})/${dur})" | lua >>"${outdir}/reports/pause.rpt"
 }
 
 function compile_if_needed() {
-  local source_file=$1
-  local executable=$2
+	local source_file=$1
+	local executable=$2
 
-  # Check if the executable exists and if the source file is newer
-  if [ ! -f "$executable" ] || [ "$source_file" -nt "$executable" ]; then
-    echo "Compiling $source_file..."
-    if gcc -o "$executable" "$source_file"; then
-      echo "Compilation successful."
-    else
-      echo "Compilation failed."
-    fi
-  else
-    echo "No need to recompile."
-  fi
+	# Check if the executable exists and if the source file is newer
+	if [[ ! -f ${executable} ]] || [[ ${source_file} -nt ${executable} ]]; then
+		echo "Compiling ${source_file}..."
+		if gcc -o "${executable}" "${source_file}"; then
+			echo "Compilation successful."
+		else
+			echo "Compilation failed."
+		fi
+	else
+		echo "No need to recompile."
+	fi
 }
 
-if [ "$type" = 0 ]; then
-  echo "Collecting TCP experiment metrics..."
+if [[ ${type} == 0 ]]; then
+	echo "Collecting TCP experiment metrics..."
 
-  if [ "$cpu_util" = 1 ]; then
-    echo "Collecting CPU utilization for cores $cores..."
-    sar -P "$cores" 1 1000 | tr -s " " | grep ":" >"$outdir/logs/cpu_util.log" &
-    sleep "$dur"
-    sudo pkill -9 -f "sar" || true
-    python3 "$utils_dir/cpu_util.py" "$outdir/logs/cpu_util.log" >"$outdir/reports/cpu_util.rpt"
-  fi
+	if [[ ${cpu_util} == 1 ]]; then
+		echo "Collecting CPU utilization for cores ${cores}..."
+		sar -P "${cores}" 1 1000 | tr -s " " | grep ":" >"${outdir}/logs/cpu_util.log" &
+		sleep "${dur}"
+		sudo pkill -TERM -f "sar -P" || true
+		sleep 1
+		sudo pkill -9 -f "sar -P" || true
+		python3 "${utils_dir}/cpu_util.py" "${outdir}/logs/cpu_util.log" >"${outdir}/reports/cpu_util.rpt"
+	fi
 
-  # if ["$bw" = 1 ]
-  # then
-  # echo "Collecting app bandwidth..."
-  # echo "Avg_iperf_tput: " $(cat $outdir/logs/iperf.bw.log | grep "60.*-90.*" | awk  '{ sum += $7; n++ } END { if (n > 0) printf "%.3f", sum/1000; }') > $outdir/reports/iperf.bw.rpt
-  # fi
+	# if ["$bw" = 1 ]
+	# then
+	# echo "Collecting app bandwidth..."
+	# echo "Avg_iperf_tput: " $(cat $outdir/logs/iperf.bw.log | grep "60.*-90.*" | awk  '{ sum += $7; n++ } END { if (n > 0) printf "%.3f", sum/1000; }') > $outdir/reports/iperf.bw.rpt
+	# fi
 
-  if [ "$retx" = 1 ]; then
-    echo "Collecting retransmission rate..."
-    dump_netstat "$dur" >"$outdir/logs/retx.log"
-    grep -E "segment|TCPLostRetransmit" "$outdir/logs/retx.log" >retx.out
-    python3 "$utils_dir/print_retx_rate.py" retx.out "$dur" >"$outdir/reports/retx.rpt"
-  fi
+	if [[ ${retx} == 1 ]]; then
+		echo "Collecting retransmission rate..."
+		dump_netstat "${dur}" >"${outdir}/logs/retx.log"
+		grep -E "segment|TCPLostRetransmit" "${outdir}/logs/retx.log" >"${outdir}/logs/retx.out"
+		python3 "${utils_dir}/print_retx_rate.py" "${outdir}/logs/retx.out" "${dur}" >"${outdir}/reports/retx.rpt"
+	fi
 
-  if [ "$tcplog" = 1 ]; then
-    echo "Collecting tcplog..."
-    cd /sys/kernel/debug/tracing
-    echo >trace
-    echo 1 >events/tcp/tcp_probe/enable
-    sleep 2
-    echo 0 >events/tcp/tcp_probe/enable
-    sleep 2
-    cp trace "$outdir/logs/tcp.trace.log"
-    echo >trace
-    cd -
-    python3 "$utils_dir/parse_tcplog.py" "$outdir"
-  fi
+	if [[ ${tcplog} == 1 ]]; then
+		echo "Collecting tcplog..."
+		cd /sys/kernel/debug/tracing || exit
+		echo >trace
+		echo 1 >events/tcp/tcp_probe/enable
+		sleep 2
+		echo 0 >events/tcp/tcp_probe/enable
+		sleep 2
+		cp trace "${outdir}/logs/tcp.trace.log"
+		echo >trace
+		cd - || exit
+		python3 "${utils_dir}/parse_tcplog.py" "${outdir}"
+	fi
 
-elif [ "$type" = 1 ]; then
-  echo "Collecting RDMA experiment metrics..."
-  if [ "$pfc" = 1 ]; then
-    echo "Collecting PFC triggers at RDMA server..."
-    collect_pfc
-  fi
+elif [[ ${type} == 1 ]]; then
+	echo "Collecting RDMA experiment metrics..."
+	if [[ ${pfc} == 1 ]]; then
+		echo "Collecting PFC triggers at RDMA server..."
+		collect_pfc
+	fi
 
 else
-  echo "Incorrect type..."
-  help
+	echo "Incorrect type..."
+	help
 fi
 
-if [ "$pcie" = 1 ]; then
-  echo "Collecting PCIe bandwidth..."
-  pushd "$home/hostCC/utils"
-  dump_pciebw
-  sleep "$dur"
-  sudo pkill -9 -f "bin/pcm" || true
-  parse_pciebw "$stack" "$pcien"
-  popd
+if [[ ${pcie} == 1 ]]; then
+	echo "Collecting PCIe bandwidth..."
+	dump_pciebw &
+	sleep "${dur}"
+	sudo pkill -INT -f "pcm-iio" || true
+	sleep 1
+	sudo pkill -9 -f "pcm-iio" || true
+	parse_pciebw "${stack}" "${pcien}"
 fi
 
-if [ "$membw" = 1 ]; then
-  echo "Collecting Memory bandwidth..."
-  dump_membw >"$outdir/logs/membw.log" &
-  sleep "$dur"
-  sudo pkill -9 -f "bin/pcm" || true
-  parse_membw
+if [[ ${membw} == 1 ]]; then
+	echo "Collecting Memory bandwidth..."
+	dump_membw >"${outdir}/logs/membw.log" &
+	sleep "${dur}"
+	sudo pkill -INT -f "pcm-memory" || true
+	sleep 1
+	sudo pkill -9 -f "pcm-memory" || true
+	parse_membw
 fi
 
-if [ "$iio" = 1 ]; then
-  echo "Collecting IIO occupancy..."
-  # gcc collect_iio_occ.c -o collect_iio_occ
-  compile_if_needed "$utils_dir/collect_iio_occ.c" "$utils_dir/collect_iio_occ"
-  # Run on core 28
-  taskset -c "$iio_measure_core" "$utils_dir/collect_iio_occ" "$(nproc)" "$iio_measure_core" "$stack" &
-  sleep "$dur"
-  sudo pkill -2 -f "$utils_dir/collect_iio_occ" || true
-  sleep 5
-  mv iio.csv "$outdir/logs/iio.csv"
-  #TODO: make more generic and add a parser to create report for iio occupancy logging from userspace
+if [[ ${iio} == 1 ]]; then
+	echo "Collecting IIO occupancy..."
+	compile_if_needed "${utils_dir}/collect_iio_occ.c" "${utils_dir}/collect_iio_occ"
+	# Run from outdir/logs so iio.csv is written there directly.
+	(cd "${outdir}/logs" && taskset -c "${runcore}" "${utils_dir}/collect_iio_occ" "$(nproc)" "${runcore}" "${stack}") &
+	sleep "${dur}"
+	sudo pkill -INT -f "collect_iio_occ" || true
+	sleep 2
+	sudo pkill -9 -f "collect_iio_occ" || true
 fi
 
-if [ "$regpcm" = 1 ]; then
-  echo "Collecting standard PCM metrics..."
-  dump_standard_pcm &
-  sleep "$dur"
-  sudo pkill -9 -f "bin/pcm" || true
+if [[ ${regpcm} == 1 ]]; then
+	echo "Collecting standard PCM metrics..."
+	dump_standard_pcm &
+	sleep "${dur}"
+	sudo pkill -INT -f "bin/pcm [0-9]" || true
+	sleep 1
+	sudo pkill -9 -f "bin/pcm [0-9]" || true
 fi
 
 exit 0
