@@ -12,3 +12,4 @@ utils/reports/*
 *.pyc
 *.csv
 *.db
+.DS_Store
