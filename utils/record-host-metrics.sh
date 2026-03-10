@@ -355,4 +355,5 @@ if [[ ${regpcm} == 1 ]]; then
 	sudo pkill -9 -f "bin/pcm [0-9]" || true
 fi
 
+echo "record-host-metrics.sh finished"
 exit 0
