@@ -351,3 +351,5 @@ if [ "$regpcm" = 1 ]; then
   sleep "$dur"
   sudo pkill -9 -f "bin/pcm" || true
 fi
+
+exit 0
