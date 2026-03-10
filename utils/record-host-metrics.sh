@@ -268,7 +268,7 @@ if [[ ${type} == 0 ]]; then
 
 	if [[ ${cpu_util} == 1 ]]; then
 		echo "Collecting CPU utilization for cores ${cores}..."
-		sar -P "${cores}" 1 1000 | tr -s " " | grep ":" >"${outdir}/logs/cpu_util.log" &
+		sar -P "${cores}" 1 1000 2>/dev/null | tr -s " " | grep ":" >"${outdir}/logs/cpu_util.log" &
 		sleep "${dur}"
 		sudo pkill -TERM -f "sar -P" || true
 		sleep 1
@@ -317,7 +317,7 @@ fi
 
 if [[ ${pcie} == 1 ]]; then
 	echo "Collecting PCIe bandwidth..."
-	dump_pciebw &
+	dump_pciebw >/dev/null 2>&1 &
 	sleep "${dur}"
 	sudo pkill -INT -f "pcm-iio" || true
 	sleep 1
@@ -327,7 +327,7 @@ fi
 
 if [[ ${membw} == 1 ]]; then
 	echo "Collecting Memory bandwidth..."
-	dump_membw >"${outdir}/logs/membw.log" &
+	dump_membw >"${outdir}/logs/membw.log" 2>&1 &
 	sleep "${dur}"
 	sudo pkill -INT -f "pcm-memory" || true
 	sleep 1
@@ -339,7 +339,7 @@ if [[ ${iio} == 1 ]]; then
 	echo "Collecting IIO occupancy..."
 	compile_if_needed "${utils_dir}/collect_iio_occ.c" "${utils_dir}/collect_iio_occ"
 	# Run from outdir/logs so iio.csv is written there directly.
-	(cd "${outdir}/logs" && taskset -c "${runcore}" "${utils_dir}/collect_iio_occ" "$(nproc)" "${runcore}" "${stack}") &
+	(cd "${outdir}/logs" && taskset -c "${runcore}" "${utils_dir}/collect_iio_occ" "$(nproc)" "${runcore}" "${stack}") >/dev/null 2>&1 &
 	sleep "${dur}"
 	sudo pkill -INT -f "collect_iio_occ" || true
 	sleep 2
@@ -348,7 +348,7 @@ fi
 
 if [[ ${regpcm} == 1 ]]; then
 	echo "Collecting standard PCM metrics..."
-	dump_standard_pcm &
+	dump_standard_pcm >/dev/null 2>&1 &
 	sleep "${dur}"
 	sudo pkill -INT -f "bin/pcm [0-9]" || true
 	sleep 1
