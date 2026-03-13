@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -oux pipefail
+set -ou pipefail
 
 help() {
 	echo "Usage: record-host-metrics [ -H | --home (home directory)]
@@ -27,13 +27,11 @@ help() {
 
 SHORT=H:,o:,d:,c:,C:,r:,T:,b:,f:,P:,s:,n:,M:,I:,R:,p:,i:,t:,h
 LONG=home:,outdir:,dur:,cpu_util:,cores:,retx:,tcplog:,bw:,flame:,pcie:,stack:,pcien:,membw:,iio:,regpcm:,pfc:,intf:,type:,help
-OPTS=$(getopt -a -n record-host-metrics --options "${SHORT}" --longoptions "${LONG}" -- "$@")
-
-VALID_ARGUMENTS="$#" # Returns the count of arguments that are in short or long options
-
-if [[ ${VALID_ARGUMENTS} -eq 0 ]]; then
+if [[ $# -eq 0 ]]; then
 	help
 fi
+
+OPTS=$(getopt -a -n record-host-metrics --options "${SHORT}" --longoptions "${LONG}" -- "$@") || help
 
 eval set -- "${OPTS}"
 
@@ -155,40 +153,148 @@ utils_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 mkdir -pv "${outdir}/logs"    #Directory to store collected logs
 mkdir -pv "${outdir}/reports" #Directory to store parsed metrics
 # Make these directories accessible to all so that other scripts can store things here.
-chmod -R 777 "${outdir}/logs"
-chmod -R 777 "${outdir}/reports"
+chmod -R 755 "${outdir}/logs"
+chmod -R 755 "${outdir}/reports"
 
 # Load MSR module once (needed by PCM tools).
 modprobe msr 2>/dev/null || true
 
 function dump_netstat() {
-	local SLEEP_TIME=$1
+	local sleep_time="$1"
 
 	echo "Before measurement"
 	netstat -s
 	echo "Sleeping..."
-	sleep "${SLEEP_TIME}"
+	sleep "${sleep_time}"
 	echo "After measurement"
 	netstat -s
-
 }
 
 function dump_pciebw() {
-	# Run on core $runcore
+	# Run on core $runcore. Redirect from caller; this just runs the tool.
 	sudo taskset -c "${runcore}" "${home}/pcm/build/bin/pcm-iio" 1 -csv="${outdir}/logs/pcie.csv"
 }
 
+# PIDs of background metric-collection processes, for targeted cleanup.
+declare -A bg_pids
+
 function parse_pciebw() {
-	#TODO: make more general, parse PCIe bandwidth for any given socket and IIO stack
 	local STACK=$1
 	local PCIEN=$2
-	# tput is in Gbps
-	{
-		echo "avg_PCIe_wr_tput: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }')"
-		echo "avg_PCIe_rd_tput: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%0.3f", sum / n * 8 ; }')"
-		echo "avg_IOTLB_hit_count: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $7; n++ } END { if (n > 0) printf "%0.3f", sum / n; }')"
-		echo "avg_IOTLB_miss_count: $(grep "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%0.3f", sum / n; }')"
-	} >>"${outdir}/reports/pcie.rpt"
+
+	# Detect how many sockets are present in the CSV.
+	local num_sockets
+	num_sockets=$(grep -oP 'Socket[0-9]+' "${outdir}/logs/pcie.csv" | sort -u | wc -l)
+	if [[ ${num_sockets} -lt 1 ]]; then
+		num_sockets=1
+	fi
+
+	# Detect how many parts are present for the target stack/PCIe port.
+	local num_parts
+	num_parts=$(grep -oP "Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part[0-9]+" \
+		"${outdir}/logs/pcie.csv" | sort -u | wc -l)
+	if [[ ${num_parts} -lt 1 ]]; then
+		num_parts=1
+	fi
+
+	local sock part prefix filter_pat
+	for sock in $(seq 0 $((num_sockets - 1))); do
+		for part in $(seq 0 $((num_parts - 1))); do
+			prefix="Socket${sock}_PCIe${PCIEN}_Part${part}"
+			filter_pat="Socket${sock},IIO Stack ${STACK} - PCIe${PCIEN},Part${part}"
+
+			# Skip if no matching rows (e.g., Part1+ may not exist).
+			if ! grep -q "${filter_pat}" "${outdir}/logs/pcie.csv" 2>/dev/null; then
+				continue
+			fi
+
+			# --- Throughput: avg, p50, p99, max (Gbps) ---
+			# $4 = write bytes, $5 = read bytes (per 1-second sample).
+			{
+				grep "${filter_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' -v pfx="${prefix}" '
+				{
+					wr = $4 / 1000000000.0 * 8
+					rd = $5 / 1000000000.0 * 8
+					wr_arr[NR] = wr; rd_arr[NR] = rd
+					wr_sum += wr; rd_sum += rd
+					n++
+				}
+				END {
+					if (n == 0) exit
+					# Sort helper (insertion sort, fine for typical N).
+					for (i = 2; i <= n; i++) {
+						v = wr_arr[i]; j = i
+						while (j > 1 && wr_arr[j-1] > v) { wr_arr[j] = wr_arr[j-1]; j-- }
+						wr_arr[j] = v
+					}
+					for (i = 2; i <= n; i++) {
+						v = rd_arr[i]; j = i
+						while (j > 1 && rd_arr[j-1] > v) { rd_arr[j] = rd_arr[j-1]; j-- }
+						rd_arr[j] = v
+					}
+					# ceil(n * fraction) for correct percentile indexing.
+					p50 = int(n * 0.50 + 0.999999); if (p50 < 1) p50 = 1; if (p50 > n) p50 = n
+					p99 = int(n * 0.99 + 0.999999); if (p99 < 1) p99 = 1; if (p99 > n) p99 = n
+
+					printf "%s_avg_PCIe_wr_tput: %.3f\n", pfx, wr_sum / n
+					printf "%s_p50_PCIe_wr_tput: %.3f\n", pfx, wr_arr[p50]
+					printf "%s_p99_PCIe_wr_tput: %.3f\n", pfx, wr_arr[p99]
+					printf "%s_max_PCIe_wr_tput: %.3f\n", pfx, wr_arr[n]
+
+					printf "%s_avg_PCIe_rd_tput: %.3f\n", pfx, rd_sum / n
+					printf "%s_p50_PCIe_rd_tput: %.3f\n", pfx, rd_arr[p50]
+					printf "%s_p99_PCIe_rd_tput: %.3f\n", pfx, rd_arr[p99]
+					printf "%s_max_PCIe_rd_tput: %.3f\n", pfx, rd_arr[n]
+				}'
+
+				# --- IOTLB: avg counts and miss rate ---
+				# $7 = IOTLB hits, $8 = IOTLB misses.
+				grep "${filter_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' -v pfx="${prefix}" '
+				{
+					hits += $7; misses += $8; n++
+				}
+				END {
+					if (n == 0) exit
+					printf "%s_avg_IOTLB_hit_count: %.3f\n", pfx, hits / n
+					printf "%s_avg_IOTLB_miss_count: %.3f\n", pfx, misses / n
+					total = hits + misses
+					if (total > 0)
+						printf "%s_IOTLB_miss_rate: %.6f\n", pfx, misses / total
+					else
+						printf "%s_IOTLB_miss_rate: 0.000000\n", pfx
+				}'
+
+				# --- TLP counters: MRd, CPL, CPLd ---
+				# $6 = Inbound TLP MRd (memory read requests from device).
+				# $9 = Inbound TLP CPL  (completions without data).
+				# $10 = Inbound TLP CPLd (completions with data).
+				grep "${filter_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' -v pfx="${prefix}" '
+				{
+					mrd += $6; cpl += $9; cpld += $10; n++
+				}
+				END {
+					if (n == 0) exit
+					printf "%s_avg_TLP_MRd: %.3f\n", pfx, mrd / n
+					printf "%s_avg_TLP_CPL: %.3f\n", pfx, cpl / n
+					printf "%s_avg_TLP_CPLd: %.3f\n", pfx, cpld / n
+					if (mrd > 0)
+						printf "%s_avg_CPLd_per_MRd: %.3f\n", pfx, cpld / mrd
+				}'
+			} >>"${outdir}/reports/pcie.rpt"
+		done
+	done
+
+	# Also emit legacy unprefixed keys for backward compatibility
+	# (Socket0, Part0 only).
+	local legacy_pat="Socket0,IIO Stack ${STACK} - PCIe${PCIEN},Part0"
+	if grep -q "${legacy_pat}" "${outdir}/logs/pcie.csv" 2>/dev/null; then
+		{
+			echo "avg_PCIe_wr_tput: $(grep "${legacy_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $4/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }')"
+			echo "avg_PCIe_rd_tput: $(grep "${legacy_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $5/1000000000.0; n++ } END { if (n > 0) printf "%.3f", sum / n * 8 ; }')"
+			echo "avg_IOTLB_hit_count: $(grep "${legacy_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $7; n++ } END { if (n > 0) printf "%.3f", sum / n; }')"
+			echo "avg_IOTLB_miss_count: $(grep "${legacy_pat}" "${outdir}/logs/pcie.csv" | awk -F ',' '{ sum += $8; n++ } END { if (n > 0) printf "%.3f", sum / n; }')"
+		} >>"${outdir}/reports/pcie.rpt"
+	fi
 }
 
 function dump_membw() {
@@ -222,15 +328,20 @@ function parse_membw() {
 }
 
 function collect_pfc() {
-	#assuming PFC is enabled for QoS 0
+	# Assuming PFC is enabled for QoS 0.
 	sudo ethtool -S "${intf}" | grep pause >"${outdir}/logs/pause.before.log"
 	sleep "${dur}"
 	sudo ethtool -S "${intf}" | grep pause >"${outdir}/logs/pause.after.log"
 
+	local pause_before pause_duration_before pause_after pause_duration_after
 	pause_before=$(grep "tx_prio0_pause" "${outdir}/logs/pause.before.log" | head -n1 | awk '{ printf $2 }')
 	pause_duration_before=$(grep "tx_prio0_pause_duration" "${outdir}/logs/pause.before.log" | awk '{ printf $2 }')
 	pause_after=$(grep "tx_prio0_pause" "${outdir}/logs/pause.after.log" | head -n1 | awk '{ printf $2 }')
 	pause_duration_after=$(grep "tx_prio0_pause_duration" "${outdir}/logs/pause.after.log" | awk '{ printf $2 }')
+
+	# Default to 0 if grep found nothing.
+	: "${pause_before:=0}" "${pause_duration_before:=0}"
+	: "${pause_after:=0}" "${pause_duration_after:=0}"
 
 	{
 		echo "pauses_before: ${pause_before}"
@@ -239,16 +350,18 @@ function collect_pfc() {
 		echo "pause_duration_after: ${pause_duration_after}"
 	} >>"${outdir}/logs/pause.log"
 
-	# echo $pause_before, $pause_after
-	echo "print((${pause_after} - ${pause_before})/${dur})" | lua >"${outdir}/reports/pause.rpt"
-
-	# echo $pause_duration_before, $pause_duration_after
-	echo "print((${pause_duration_after} - ${pause_duration_before})/${dur})" | lua >>"${outdir}/reports/pause.rpt"
+	# Compute rates using awk instead of piping into lua.
+	awk -v after="${pause_after}" -v before="${pause_before}" \
+		-v d="${dur}" 'BEGIN { printf "%.6f\n", (after - before) / d }' \
+		>"${outdir}/reports/pause.rpt"
+	awk -v after="${pause_duration_after}" -v before="${pause_duration_before}" \
+		-v d="${dur}" 'BEGIN { printf "%.6f\n", (after - before) / d }' \
+		>>"${outdir}/reports/pause.rpt"
 }
 
 function compile_if_needed() {
-	local source_file=$1
-	local executable=$2
+	local source_file="$1"
+	local executable="$2"
 
 	# Check if the executable exists and if the source file is newer
 	if [[ ! -f ${executable} ]] || [[ ${source_file} -nt ${executable} ]]; then
@@ -268,11 +381,12 @@ if [[ ${type} == 0 ]]; then
 
 	if [[ ${cpu_util} == 1 ]]; then
 		echo "Collecting CPU utilization for cores ${cores}..."
-		sar -P "${cores}" 1 1000 2>/dev/null | tr -s " " | grep ":" >"${outdir}/logs/cpu_util.log" &
+		sar -P "${cores}" 1 "${dur}" 2>/dev/null | tr -s " " | grep ":" >"${outdir}/logs/cpu_util.log" &
+		bg_pids[sar]=$!
 		sleep "${dur}"
-		sudo pkill -TERM -f "sar -P" || true
-		sleep 1
-		sudo pkill -9 -f "sar -P" || true
+		kill -TERM "${bg_pids[sar]}" 2>/dev/null || true
+		wait "${bg_pids[sar]}" 2>/dev/null || true
+		unset 'bg_pids[sar]'
 		python3 "${utils_dir}/cpu_util.py" "${outdir}/logs/cpu_util.log" >"${outdir}/reports/cpu_util.rpt"
 	fi
 
@@ -291,15 +405,14 @@ if [[ ${type} == 0 ]]; then
 
 	if [[ ${tcplog} == 1 ]]; then
 		echo "Collecting tcplog..."
-		cd /sys/kernel/debug/tracing || exit
-		echo >trace
-		echo 1 >events/tcp/tcp_probe/enable
-		sleep 2
-		echo 0 >events/tcp/tcp_probe/enable
-		sleep 2
-		cp trace "${outdir}/logs/tcp.trace.log"
-		echo >trace
-		cd - || exit
+		tracedir=/sys/kernel/debug/tracing
+		echo >"${tracedir}/trace"
+		echo 1 >"${tracedir}/events/tcp/tcp_probe/enable"
+		sleep "${dur}"
+		echo 0 >"${tracedir}/events/tcp/tcp_probe/enable"
+		sleep 1
+		cp "${tracedir}/trace" "${outdir}/logs/tcp.trace.log"
+		echo >"${tracedir}/trace"
 		python3 "${utils_dir}/parse_tcplog.py" "${outdir}"
 	fi
 
@@ -318,20 +431,22 @@ fi
 if [[ ${pcie} == 1 ]]; then
 	echo "Collecting PCIe bandwidth..."
 	dump_pciebw >/dev/null 2>&1 &
+	bg_pids[pciebw]=$!
 	sleep "${dur}"
-	sudo pkill -INT -f "pcm-iio" || true
-	sleep 1
-	sudo pkill -9 -f "pcm-iio" || true
+	sudo kill -INT "${bg_pids[pciebw]}" 2>/dev/null || true
+	wait "${bg_pids[pciebw]}" 2>/dev/null || true
+	unset 'bg_pids[pciebw]'
 	parse_pciebw "${stack}" "${pcien}"
 fi
 
 if [[ ${membw} == 1 ]]; then
 	echo "Collecting Memory bandwidth..."
 	dump_membw >"${outdir}/logs/membw.log" 2>&1 &
+	bg_pids[membw]=$!
 	sleep "${dur}"
-	sudo pkill -INT -f "pcm-memory" || true
-	sleep 1
-	sudo pkill -9 -f "pcm-memory" || true
+	sudo kill -INT "${bg_pids[membw]}" 2>/dev/null || true
+	wait "${bg_pids[membw]}" 2>/dev/null || true
+	unset 'bg_pids[membw]'
 	parse_membw
 fi
 
@@ -340,19 +455,21 @@ if [[ ${iio} == 1 ]]; then
 	compile_if_needed "${utils_dir}/collect_iio_occ.c" "${utils_dir}/collect_iio_occ"
 	# Run from outdir/logs so iio.csv is written there directly.
 	(cd "${outdir}/logs" && taskset -c "${runcore}" "${utils_dir}/collect_iio_occ" "$(nproc)" "${runcore}" "${stack}") >/dev/null 2>&1 &
+	bg_pids[iio]=$!
 	sleep "${dur}"
-	sudo pkill -INT -f "collect_iio_occ" || true
-	sleep 2
-	sudo pkill -9 -f "collect_iio_occ" || true
+	sudo kill -INT "${bg_pids[iio]}" 2>/dev/null || true
+	wait "${bg_pids[iio]}" 2>/dev/null || true
+	unset 'bg_pids[iio]'
 fi
 
 if [[ ${regpcm} == 1 ]]; then
 	echo "Collecting standard PCM metrics..."
 	dump_standard_pcm >/dev/null 2>&1 &
+	bg_pids[pcm]=$!
 	sleep "${dur}"
-	sudo pkill -INT -f "bin/pcm [0-9]" || true
-	sleep 1
-	sudo pkill -9 -f "bin/pcm [0-9]" || true
+	sudo kill -INT "${bg_pids[pcm]}" 2>/dev/null || true
+	wait "${bg_pids[pcm]}" 2>/dev/null || true
+	unset 'bg_pids[pcm]'
 fi
 
 echo "record-host-metrics.sh finished"
