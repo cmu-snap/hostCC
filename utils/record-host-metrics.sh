@@ -433,7 +433,7 @@ if [[ ${pcie} == 1 ]]; then
 	dump_pciebw >/dev/null 2>&1 &
 	bg_pids[pciebw]=$!
 	sleep "${dur}"
-	sudo kill -INT "${bg_pids[pciebw]}" 2>/dev/null || true
+	sudo pkill -x -INT pcm-iio 2>/dev/null || true
 	wait "${bg_pids[pciebw]}" 2>/dev/null || true
 	unset 'bg_pids[pciebw]'
 	parse_pciebw "${stack}" "${pcien}"
@@ -444,7 +444,7 @@ if [[ ${membw} == 1 ]]; then
 	dump_membw >"${outdir}/logs/membw.log" 2>&1 &
 	bg_pids[membw]=$!
 	sleep "${dur}"
-	sudo kill -INT "${bg_pids[membw]}" 2>/dev/null || true
+	sudo pkill -x -INT pcm-memory 2>/dev/null || true
 	wait "${bg_pids[membw]}" 2>/dev/null || true
 	unset 'bg_pids[membw]'
 	parse_membw
@@ -457,7 +457,7 @@ if [[ ${iio} == 1 ]]; then
 	(cd "${outdir}/logs" && taskset -c "${runcore}" "${utils_dir}/collect_iio_occ" "$(nproc)" "${runcore}" "${stack}") >/dev/null 2>&1 &
 	bg_pids[iio]=$!
 	sleep "${dur}"
-	sudo kill -INT "${bg_pids[iio]}" 2>/dev/null || true
+	sudo pkill -x -INT collect_iio_occ 2>/dev/null || true
 	wait "${bg_pids[iio]}" 2>/dev/null || true
 	unset 'bg_pids[iio]'
 fi
@@ -467,7 +467,7 @@ if [[ ${regpcm} == 1 ]]; then
 	dump_standard_pcm >/dev/null 2>&1 &
 	bg_pids[pcm]=$!
 	sleep "${dur}"
-	sudo kill -INT "${bg_pids[pcm]}" 2>/dev/null || true
+	sudo pkill -x -INT pcm 2>/dev/null || true
 	wait "${bg_pids[pcm]}" 2>/dev/null || true
 	unset 'bg_pids[pcm]'
 fi
