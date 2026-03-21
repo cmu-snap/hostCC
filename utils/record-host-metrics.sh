@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ou pipefail
+set -xou pipefail
 
 help() {
 	echo "Usage: record-host-metrics [ -H | --home (home directory)]
