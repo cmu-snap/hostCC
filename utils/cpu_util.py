@@ -7,10 +7,16 @@ cpu_util = collections.defaultdict(float)
 num_samples = collections.defaultdict(float)
 
 with open(INPUT_FILE) as f1:
-    for line in f1:
+    lines = f1.readlines()
+    for i, line in enumerate(lines):
         if "CPU" not in line:
             elements = line.split()
-            assert len(elements) == 9
+            if len(elements) != 9:
+                if i == len(lines) - 1:
+                    continue
+                raise ValueError(
+                    f"Expected 9 columns but got {len(elements)} on line {i + 1}: {line!r}"
+                )
             cpu = int(elements[2])
             idle = float(elements[8])
             cpu_util[cpu] += 100 - idle
